@@ -12,6 +12,9 @@ server <- function(input, output) {
         # Datos
         lomb.data <- read.csv("./lombriz-data.csv")
         
+        # Obtengo todos los años de las muestras:
+        años <- as.character(unique(lomb.data$year))
+        
         # Convierto los datos importados en puntos espaciales.
         lomb.sp <- lomb.data
         coordinates(lomb.sp) <- ~y+x
@@ -91,7 +94,7 @@ server <- function(input, output) {
         cat("\n")
         
         # Creación del mapa, usando la agregación anterior como fuente de datos.
-        leaflet(agg) %>%
+        l <- leaflet(agg) %>%
             addTiles %>%
             addPolygons(stroke = TRUE,
                         opacity = 1,
@@ -103,19 +106,29 @@ server <- function(input, output) {
                         group = "Grilla") %>%
             addLegend(values = ~dens, 
                       pal = qpal, 
-                      title = "Densidad") %>%
-            addMarkers(data = lomb.sp,
-                       popup = paste("Especie: <b>", lomb.sp$species, "</b><br>",
-                                     "Densidad: <b>", lomb.sp$dens, "</b><br>",
-                                     "Año: <b>", lomb.sp$year, "</b>"),
-                       label = lapply(paste("Especie: <b>", lomb.sp$species, "</b><br>",
-                                            "Densidad: <b>", lomb.sp$dens, "</b><br>",
-                                            "Año: <b>", lomb.sp$year, "</b>"), 
-                                      htmltools::HTML),
-                       popupOptions = popupOptions(closeButton = FALSE),
-                       group = "Marcadores") %>%
-            addLayersControl(overlayGroups = c("Grilla",
-                                               "Marcadores"),
-                             options = layersControlOptions(collapsed = FALSE))
+                      title = "Densidad")
+        
+        # Agrego una capa de marcadores por cada año:
+        for (año in años) {
+            # Obtengo del data frame las muestras del año en particular.
+            datos <- lomb.sp[lomb.sp$year == año, ]
+            
+            # Armo una capa de marcadores, con las muestras del año.
+            l = l %>% addMarkers(data = datos,
+                                 popup = paste("Especie: <b>", datos$species, "</b><br>",
+                                               "Densidad: <b>", datos$dens, "</b><br>",
+                                               "Año: <b>", datos$year, "</b>"),
+                                 label = lapply(paste("Especie: <b>", datos$species, "</b><br>",
+                                                      "Densidad: <b>", datos$dens, "</b><br>",
+                                                      "Año: <b>", datos$year, "</b>"),
+                                                htmltools::HTML),
+                                 popupOptions = popupOptions(closeButton = FALSE),
+                                 group = año)
+        }
+        
+        # Control de capas, para poder alternar la vista de cada capa anual de
+        # marcadores, y también alternar la vista de la grilla.
+        l %>% addLayersControl(overlayGroups = c(años, "Grilla"),
+                               options = layersControlOptions(collapsed = FALSE))
     })
 }
