@@ -12,7 +12,7 @@ server <- function(input, output) {
         # Datos
         lomb.data <- read.csv("./lombriz-data.csv")
         
-        # Convierto en puntos espaciales.
+        # Convierto los datos importados en puntos espaciales.
         lomb.sp <- lomb.data
         coordinates(lomb.sp) <- ~y+x
         
@@ -23,63 +23,74 @@ server <- function(input, output) {
         # forma.
         bsas <- subset(argentina, str_detect(NAME_1, "Buenos Aires")) 
         
-        # Enforzar los límites de la provincia sobre los puntos
+        # Enfuerzo los límites de la provincia sobre los puntos
         proj4string(lomb.sp) <- proj4string(bsas)
         
         # Simplifico la figura de la provincia para reducir el tiempo de ejecución.
         bsas <- gSimplify(bsas, 
                           tol = 0.05)
         
-        # Determinar el límite rectangular de la provincia
+        # Determino el límite rectangular de la provincia
         # bbox(bsas)
         #         min       max
         # x -63.39386 -56.66736
         # y -41.03542 -33.26014
         e <- extent(bbox(bsas))
         
-        # Convertir a objeto raster
+        # Convierto a objeto raster
         r <- raster(e)
         
-        # Dividir en grilla de 25 x 25
+        # Divido en grilla de 25 x 25
         # TODO: Calcular filas y columnas según distancia deseada y el tamaño de la provincia (usando el resultado de bbox).
         dim(r) <- c(25, 25)
         projection(r) <- crs(proj4string(bsas))
         
-        # Agregar ID de etiqueta a las celdas
+        # Agrego el ID de etiqueta a las celdas
         # * Sacando esta linea se saca la grilla
         r <- setValues(r, 1:ncell(r))
         
-        # Reconvertir en un archivo de forma para crear un popup del ID de celda
+        # Reconvierto en un archivo de forma para crear un popup del ID de celda
         # para cada polígono
         shape <- rasterToPolygons(r, dissolve = TRUE)
         
-        # Recortar las celdas de la grilla que contengan el polígono de la
+        # Recorto las celdas de la grilla que contengan el polígono de la
         # provincia.
         p <- shape[bsas, ]
         
-        # Recortar el perímetro de la grilla para coincidir con el polígono de la
+        # Recorto el perímetro de la grilla para coincidir con el polígono de la
         # provincia
         map <- gIntersection(p, bsas, 
                              byid = TRUE, 
                              drop_lower_td = TRUE)
         
-        # 
-        agg <- aggregate(x = lomb.sp["dens"], 
+        # Agrupa cada muestra en la grilla de la provincia, y calcula el promedio
+        # en cada una
+        agg <- aggregate(x = lomb.sp["dens"],
                          by = map, 
                          FUN = mean)
-        agg$dens[is.na(agg$dens)] <- 0
-        agg <- spTransform(agg, CRS("+init=epsg:4326"))
-        qpal <- colorBin("Reds", agg$dens, 
-                         bins = 5)
-        # * con `FUN = max` muestra una celda con el valor máximo 263 que aparece en
-        # el archivo.
-        # * así que hago `FUN = mean` para el promedio para cada celda.
+        # * con `FUN = max` muestra una celda con el valor máximo 263 que aparece 
+        #   en el archivo, así que hago `FUN = mean` para el promedio para cada 
+        #   celda.
         
-        cat("\n", "agg$dens", "\n")
-        print(agg$dens) # Muestra la lista de celdas y los promedios de densidad 
-                        # para cada una.
+        # Transformo los valores no existentes en 0.
+        # agg$dens[is.na(agg$dens)] <- 0
+        
+        # Transformo la projección de las coordenadas de la agregación.
+        # agg <- spTransform(agg, CRS("+init=epsg:4326"))
+        
+        # Creo la paleta de colores, según los valores de la densidad de los 
+        # datos.
+        # * na.color significa el color asignado para las celdas con "NA".
+        qpal <- colorBin("Reds", agg$dens, 
+                         bins = 5,
+                         na.color = "#ffffff")
+        
+        # Muestro la lista de celdas y los promedios de densidad en cada una.
+        cat("\n", "agg", "\n")
+        print(agg)
         cat("\n")
         
+        # Creación del mapa, usando la agregación anterior como fuente de datos.
         leaflet(agg) %>%
             addTiles %>%
             addPolygons(stroke = TRUE,
