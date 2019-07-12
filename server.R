@@ -40,7 +40,7 @@ server <- function(input, output) {
         # Convierto a objeto raster
         r <- raster(e)
         
-        # Divido en grilla de 25 x 25
+        # Divido en grilla de filas x columnas
         # TODO: Calcular filas y columnas según distancia deseada y el tamaño de la provincia (usando el resultado de bbox).
         dim(r) <- c(25, 25)
         projection(r) <- crs(proj4string(bsas))
@@ -99,7 +99,8 @@ server <- function(input, output) {
                         smoothFactor = 0.5,
                         color = "black",
                         fillColor = ~qpal(dens),
-                        weight = 0.5) %>%
+                        weight = 0.5,
+                        group = "Grilla") %>%
             addLegend(values = ~dens, 
                       pal = qpal, 
                       title = "Densidad") %>%
@@ -111,6 +112,10 @@ server <- function(input, output) {
                                             "Densidad: <b>", lomb.sp$dens, "</b><br>",
                                             "Año: <b>", lomb.sp$year, "</b>"), 
                                       htmltools::HTML),
-                       popupOptions = popupOptions(closeButton = FALSE))
+                       popupOptions = popupOptions(closeButton = FALSE),
+                       group = "Marcadores") %>%
+            addLayersControl(overlayGroups = c("Grilla",
+                                               "Marcadores"),
+                             options = layersControlOptions(collapsed = FALSE))
     })
 }
