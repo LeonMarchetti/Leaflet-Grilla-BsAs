@@ -107,6 +107,10 @@ server <- function(input, output) {
                        popup = paste("Especie: <b>", lomb.sp$species, "</b><br>",
                                      "Densidad: <b>", lomb.sp$dens, "</b><br>",
                                      "Año: <b>", lomb.sp$year, "</b>"),
+                       label = lapply(paste("Especie: <b>", lomb.sp$species, "</b><br>",
+                                            "Densidad: <b>", lomb.sp$dens, "</b><br>",
+                                            "Año: <b>", lomb.sp$year, "</b>"), 
+                                      htmltools::HTML),
                        popupOptions = popupOptions(closeButton = FALSE))
     })
 }
