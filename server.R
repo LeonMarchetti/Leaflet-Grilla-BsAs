@@ -86,8 +86,8 @@ server <- function(input, output) {
                          na.color = "#ffffff")
         
         # Muestro la lista de celdas y los promedios de densidad en cada una.
-        cat("\n", "agg", "\n")
-        print(agg)
+        cat("\n", "agg$dens", "\n")
+        print(agg$dens)
         cat("\n")
         
         # Creación del mapa, usando la agregación anterior como fuente de datos.
@@ -102,6 +102,11 @@ server <- function(input, output) {
                         weight = 0.5) %>%
             addLegend(values = ~dens, 
                       pal = qpal, 
-                      title = "Densidad")
+                      title = "Densidad") %>%
+            addMarkers(data = lomb.sp,
+                       popup = paste("Especie: <b>", lomb.sp$species, "</b><br>",
+                                     "Densidad: <b>", lomb.sp$dens, "</b><br>",
+                                     "Año: <b>", lomb.sp$year, "</b>"),
+                       popupOptions = popupOptions(closeButton = FALSE))
     })
 }
