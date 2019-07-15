@@ -106,7 +106,8 @@ server <- function(input, output) {
                         group = "Grilla") %>%
             addLegend(values = ~dens, 
                       pal = qpal, 
-                      title = "Densidad")
+                      title = "Densidad",
+                      group = "Grilla")
         
         # Agrego una capa de marcadores por cada año:
         for (año in años) {
