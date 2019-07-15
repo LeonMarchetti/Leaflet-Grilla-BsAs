@@ -6,6 +6,13 @@ library(leaflet)
 library(raster)
 library(stringr)
 
+mostrar <- function(titulo, x) {
+    # DEBUG: Función para mostrar una variable por consola
+    cat("\n", titulo, "\n")
+    print(x)
+    cat("\n")
+}
+
 server <- function(input, output) {
     output$mapa <- renderLeaflet({
         
@@ -45,7 +52,10 @@ server <- function(input, output) {
         
         # Divido en grilla de filas x columnas
         # TODO: Calcular filas y columnas según distancia deseada y el tamaño de la provincia (usando el resultado de bbox).
-        dim(r) <- c(25, 25)
+        nrows <- 25
+        ncols <- 25
+        
+        dim(r) <- c(nrows, ncols)
         projection(r) <- crs(proj4string(bsas))
         
         # Agrego el ID de etiqueta a las celdas
@@ -78,20 +88,53 @@ server <- function(input, output) {
         # Transformo los valores no existentes en 0.
         # agg$dens[is.na(agg$dens)] <- 0
         
-        # Transformo la projección de las coordenadas de la agregación.
+        # Transformo la projección de las coordenadas de la agregación. 
+        # (No es necesario?)
         # agg <- spTransform(agg, CRS("+init=epsg:4326"))
         
+        # Muestro la lista de celdas y los promedios de densidad en cada una.
+        mostrar("agg$dens", agg$dens)
+        
+        # Función de interpolación:
+        interpol <- function(x) { x / 2 }
+        
+        # Calculo los valores a sumar para cada celda. Como la agregación me 
+        # devuelve una lista para representar la grilla, entonces voy a calcular
+        # la posición de la siguiente celda según su índice y la cantidad de filas
+        # y columnas.
+        list_interpol <- lapply(1:length(agg), function(i) 0)
+        for (i in 1:length(agg)) {
+            # Si no hay valor en la lista inicial, entonces no calculo nada:
+            if (!is.na(agg$dens[[i]])) {
+                # TODO: Ver como conseguir los índices de las densidades de las celdas vecinas.
+                # No se puede solamente sumar o restar 1 o la cantidad de columnas porsi una celda está en un borde, o la fila tiene menos columnas, etc.
+                
+                # Izquierda
+                j = i - 1
+                list_interpol[[j]] <- list_interpol[[j]] + interpol(agg$dens[[i]])
+                
+                # Derecha
+                j = i + 1
+                list_interpol[[j]] <- list_interpol[[j]] + interpol(agg$dens[[i]])
+            }
+        }
+        
+        list_interpol <- unlist(list_interpol, recursive=FALSE)
+        
+        # Sumo los valores interpolados a la agregación:
+        for (i in 1:length(agg)) {
+            if (list_interpol[[i]] != 0 & is.na(agg$dens[[i]]) ) {
+                agg$dens[[i]] <- 0
+            }
+            agg$dens[[i]] <- agg$dens[[i]] + list_interpol[[i]]
+        }
+
         # Creo la paleta de colores, según los valores de la densidad de los 
         # datos.
         # * na.color significa el color asignado para las celdas con "NA".
-        qpal <- colorBin("Reds", agg$dens, 
+        qpal <- colorBin("Reds", agg$dens,
                          bins = 5,
                          na.color = "#ffffff")
-        
-        # Muestro la lista de celdas y los promedios de densidad en cada una.
-        cat("\n", "agg$dens", "\n")
-        print(agg$dens)
-        cat("\n")
         
         # Creación del mapa, usando la agregación anterior como fuente de datos.
         l <- leaflet(agg) %>%
@@ -102,12 +145,15 @@ server <- function(input, output) {
                         smoothFactor = 0.5,
                         color = "black",
                         fillColor = ~qpal(dens),
+                        label = as.character(p@data$layer),
                         weight = 0.5,
                         group = "Grilla") %>%
             addLegend(values = ~dens, 
                       pal = qpal, 
                       title = "Densidad",
-                      group = "Grilla")
+                      group = "Grilla") 
+        # * En label de addPolygons muestro un cartelito al pasar sobre una celda
+        #   para saber su índice adentro de la lista de polígonos.
         
         # Agrego una capa de marcadores por cada año:
         for (año in años) {
