@@ -111,9 +111,6 @@ server <- function(input, output) {
         for (i in 1:length(agg)) {
             # Si no hay valor en la lista inicial, entonces no calculo nada:
             if (!is.na(agg$dens[[i]])) {
-                # TODO: Ver como conseguir los índices de las densidades de las celdas vecinas.
-                # No se puede solamente sumar o restar 1 o la cantidad de columnas porsi una celda está en un borde, o la fila tiene menos columnas, etc.
-                
                 # Itero sobre los vecinos del polígono "i"
                 for (v in list.vec[[i]]) {
                     list_interpol[[v]] <- list_interpol[[v]] + interpol(agg$dens[[i]])
@@ -153,6 +150,7 @@ server <- function(input, output) {
                         smoothFactor = 0.5,
                         color = "black",
                         fillColor = ~qpal(dens),
+                        label = ~as.character(dens),
                         weight = 0.5,
                         group = "Grilla") %>%
             addLegend(values = ~dens, 
