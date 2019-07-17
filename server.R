@@ -201,6 +201,7 @@ server <- function(input, output) {
         # Control de capas, para poder alternar la vista de cada capa anual de
         # marcadores, y también alternar la vista de la grilla.
         l %>% addLayersControl(overlayGroups = c(años, "Grilla"),
-                               options = layersControlOptions(collapsed = FALSE))
+                               options = layersControlOptions(collapsed = FALSE),
+                               position = "topleft")
     })
 }
