@@ -27,7 +27,8 @@ server <- function(input, output) {
         coordinates(lomb.sp) <- ~y+x
         
         # ARG_adm1.shp tiene las formas de las provincias.
-        argentina <- readOGR(dsn = "./ARG_adm/ARG_adm1.shp") 
+        argentina <- readOGR(dsn = "./ARG_adm/ARG_adm1.shp", 
+                             verbose = FALSE) 
         
         # ARG_adm1.csv tiene los nombres de las provincias para la detección de la
         # forma.
@@ -104,13 +105,6 @@ server <- function(input, output) {
         # y columnas.
         list_interpol <- lapply(1:length(agg), function(i) 0)
         
-        # Data.frame para analizar datos de cada polígono en el ciclo
-        df <- data.frame(i = numeric(), 
-                         p = numeric(),
-                         dens = numeric(),
-                         id = numeric(),
-                         vecinos = character())
-        
         # Lista de vecinos de todos los polígonos
         list.vec <- gTouches(map, byid = TRUE, returnDense = FALSE)
         
@@ -124,19 +118,8 @@ server <- function(input, output) {
                 for (v in list.vec[[i]]) {
                     list_interpol[[v]] <- list_interpol[[v]] + interpol(agg$dens[[i]])
                 }
-                
-                df <- add_row(df, 
-                              i = i, 
-                              p = p[[1]][[i]],
-                              dens = agg$dens[[i]],
-                              id = map@polygons[[i]]@ID,
-                              vecinos = paste(list.vec[[i]], collapse=" ")
-                              )
             }
         }
-        
-        # Muestro el data.frame del ciclo
-        View(df)
         
         # Desarmo la lista de interpolación en un vector para sumarlo al 
         # data.frame espacial:
@@ -170,7 +153,6 @@ server <- function(input, output) {
                         smoothFactor = 0.5,
                         color = "black",
                         fillColor = ~qpal(dens),
-                        label = as.character(p@data$layer),
                         weight = 0.5,
                         group = "Grilla") %>%
             addLegend(values = ~dens, 
