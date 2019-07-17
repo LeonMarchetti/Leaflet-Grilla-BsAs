@@ -93,7 +93,7 @@ server <- function(input, output) {
         # agg <- spTransform(agg, CRS("+init=epsg:4326"))
         
         # Muestro la lista de celdas y los promedios de densidad en cada una.
-        mostrar("agg$dens", agg$dens)
+        # mostrar("agg$dens", agg$dens)
         
         # Función de interpolación:
         interpol <- function(x) { x / 2 }
@@ -103,22 +103,43 @@ server <- function(input, output) {
         # la posición de la siguiente celda según su índice y la cantidad de filas
         # y columnas.
         list_interpol <- lapply(1:length(agg), function(i) 0)
+        
+        # Data.frame para analizar datos de cada polígono en el ciclo
+        df <- data.frame(i = numeric(), 
+                         p = numeric(),
+                         dens = numeric(),
+                         id = numeric(),
+                         vecinos = character())
+        
+        # Lista de vecinos de todos los polígonos
+        list.vec <- gTouches(map, byid = TRUE, returnDense = FALSE)
+        
         for (i in 1:length(agg)) {
             # Si no hay valor en la lista inicial, entonces no calculo nada:
             if (!is.na(agg$dens[[i]])) {
                 # TODO: Ver como conseguir los índices de las densidades de las celdas vecinas.
                 # No se puede solamente sumar o restar 1 o la cantidad de columnas porsi una celda está en un borde, o la fila tiene menos columnas, etc.
                 
-                # Izquierda
-                j = i - 1
-                list_interpol[[j]] <- list_interpol[[j]] + interpol(agg$dens[[i]])
+                # Itero sobre los vecinos del polígono "i"
+                for (v in list.vec[[i]]) {
+                    list_interpol[[v]] <- list_interpol[[v]] + interpol(agg$dens[[i]])
+                }
                 
-                # Derecha
-                j = i + 1
-                list_interpol[[j]] <- list_interpol[[j]] + interpol(agg$dens[[i]])
+                df <- add_row(df, 
+                              i = i, 
+                              p = p[[1]][[i]],
+                              dens = agg$dens[[i]],
+                              id = map@polygons[[i]]@ID,
+                              vecinos = paste(list.vec[[i]], collapse=" ")
+                              )
             }
         }
         
+        # Muestro el data.frame del ciclo
+        View(df)
+        
+        # Desarmo la lista de interpolación en un vector para sumarlo al 
+        # data.frame espacial:
         list_interpol <- unlist(list_interpol, recursive=FALSE)
         
         # Sumo los valores interpolados a la agregación:
@@ -128,6 +149,10 @@ server <- function(input, output) {
             }
             agg$dens[[i]] <- agg$dens[[i]] + list_interpol[[i]]
         }
+        
+        # Muestro la lista de celdas y los promedios de densidad en cada una
+        # después de sumar los valores interpolados.
+        # mostrar("agg$dens", agg$dens)
 
         # Creo la paleta de colores, según los valores de la densidad de los 
         # datos.
