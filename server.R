@@ -13,11 +13,19 @@ mostrar <- function(titulo, x) {
     cat("\n")
 }
 
+# Función de interpolación:
+interpol <- function(x) { 
+    x / 2 
+}
+
 server <- function(input, output) {
     output$mapa <- renderLeaflet({
         
         # Datos
-        lomb.data <- read.csv("./lombriz-data.csv")
+        # lomb.data <- read.csv("./lombriz-data.csv")
+        
+        # TODO: Cuando importo los datos aleatorios no se dibuja nada en el mapa
+        lomb.data <- read.csv("./lombriz-data-rand.csv")
         
         # Obtengo todos los años de las muestras:
         años <- as.character(unique(lomb.data$year))
@@ -25,6 +33,7 @@ server <- function(input, output) {
         # Convierto los datos importados en puntos espaciales.
         lomb.sp <- lomb.data
         coordinates(lomb.sp) <- ~y+x
+        View(lomb.sp@data)
         
         # ARG_adm1.shp tiene las formas de las provincias.
         argentina <- readOGR(dsn = "./ARG_adm/ARG_adm1.shp", 
@@ -96,14 +105,11 @@ server <- function(input, output) {
         # Muestro la lista de celdas y los promedios de densidad en cada una.
         # mostrar("agg$dens", agg$dens)
         
-        # Función de interpolación:
-        interpol <- function(x) { x / 2 }
-        
         # Calculo los valores a sumar para cada celda. Como la agregación me 
         # devuelve una lista para representar la grilla, entonces voy a calcular
         # la posición de la siguiente celda según su índice y la cantidad de filas
         # y columnas.
-        list_interpol <- lapply(1:length(agg), function(i) 0)
+        list_interpol <- rep(0, length(agg))
         
         # Lista de vecinos de todos los polígonos
         list.vec <- gTouches(map, byid = TRUE, returnDense = FALSE)
@@ -117,10 +123,6 @@ server <- function(input, output) {
                 }
             }
         }
-        
-        # Desarmo la lista de interpolación en un vector para sumarlo al 
-        # data.frame espacial:
-        list_interpol <- unlist(list_interpol, recursive=FALSE)
         
         # Sumo los valores interpolados a la agregación:
         for (i in 1:length(agg)) {
@@ -151,7 +153,7 @@ server <- function(input, output) {
                         color = "black",
                         fillColor = ~qpal(dens),
                         label = ~as.character(dens),
-                        weight = 0.5,
+                        weight = 0.2,
                         group = "Grilla") %>%
             addLegend(values = ~dens, 
                       pal = qpal, 
@@ -180,7 +182,7 @@ server <- function(input, output) {
         
         # Control de capas, para poder alternar la vista de cada capa anual de
         # marcadores, y también alternar la vista de la grilla.
-        l %>% addLayersControl(overlayGroups = c(años, "Grilla"),
+        l %>% addLayersControl(overlayGroups = c("Grilla", años),
                                options = layersControlOptions(collapsed = FALSE),
                                position = "topleft")
     })
