@@ -1,3 +1,5 @@
+library(dplyr)
+
 # Data.frame con valores aleatorios
 df <- data.frame(species = character(),
                  year = integer(),
