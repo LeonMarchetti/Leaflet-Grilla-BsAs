@@ -48,4 +48,8 @@ for (i in 1:cantidad) {
 View(df)
 
 # Escribir a archivo
-write.csv(df, file = "./lombriz-data-rand.csv")
+write.table(df, 
+            file = "lombriz-data-rand.csv",
+            quote = FALSE,
+            sep = ",",
+            row.names = FALSE)
