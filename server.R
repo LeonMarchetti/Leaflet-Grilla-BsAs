@@ -27,9 +27,6 @@ server <- function(input, output) {
         # TODO: Cuando importo los datos aleatorios no se dibuja nada en el mapa
         lomb.data <- read.csv("./lombriz-data-rand.csv")
         
-        # Obtengo todos los años de las muestras:
-        años <- as.character(unique(lomb.data$year))
-        
         # Convierto los datos importados en puntos espaciales.
         lomb.sp <- lomb.data
         coordinates(lomb.sp) <- ~x+y
@@ -48,6 +45,9 @@ server <- function(input, output) {
         # Simplifico la figura de la provincia para reducir el tiempo de ejecución.
         bsas <- gSimplify(bsas, 
                           tol = 0.05)
+        
+        # Borro las muestras que quedan afuera de la provincia
+        lomb.sp <- lomb.sp[bsas, ]
         
         # Determino el límite rectangular de la provincia
         # bbox(bsas)
