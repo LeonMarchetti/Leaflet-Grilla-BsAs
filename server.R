@@ -5,6 +5,7 @@ library(sp)
 library(leaflet)
 library(raster)
 library(stringr)
+library(geosphere)
 
 mostrar <- function(titulo, x) {
     # DEBUG: Función para mostrar una variable por consola
@@ -16,6 +17,37 @@ mostrar <- function(titulo, x) {
 # Función de interpolación:
 interpol <- function(x) { 
     x / 2 
+}
+
+dimensiones_celdas <- function(d, m) {
+    # Función que determina la cantidad de filas y columnas debe tener la grilla
+    # de la provincia en base al tamaño de esta y el que tendría la celda.
+    # d <- tamaño en km que debería tener la celda
+    # m <- matriz con las dimensiones de la figura que va a tener la grilla
+    
+    # Resultado de bbox(bsas):
+    min_x <- m[[1]]
+    min_y <- m[[2]]
+    max_x <- m[[3]]
+    max_y <- m[[4]]
+    
+    # Puntos de las esquinas:
+    esq_ii <- c(min_x, min_y)
+    #esq_id <- c(max_x, min_y)
+    esq_si <- c(min_x, max_y)
+    esq_sd <- c(max_x, max_y)
+    
+    # Distancia de cada punto en kilómetros
+    distHorizontal <- distHaversine(esq_si, esq_sd) / 1000
+    distVertical <- distHaversine(esq_ii, esq_si) / 1000
+    
+    # División de la distancia con el tamaño deseado de la celda:
+    filas <- distVertical %/% d
+    columnas <- distHorizontal %/% d
+    
+    cat(sep="", "Filas/Columnas: ", filas, "/", columnas, "\n")
+    
+    c(filas, columnas)
 }
 
 server <- function(input, output) {
@@ -60,11 +92,7 @@ server <- function(input, output) {
         r <- raster(e)
         
         # Divido en grilla de filas x columnas
-        # TODO: Calcular filas y columnas según distancia deseada y el tamaño de la provincia (usando el resultado de bbox).
-        nrows <- 100
-        ncols <- 100
-        
-        dim(r) <- c(nrows, ncols)
+        dim(r) <- dimensiones_celdas(25, bbox(bsas))
         projection(r) <- crs(proj4string(bsas))
         
         # Agrego el ID de etiqueta a las celdas
