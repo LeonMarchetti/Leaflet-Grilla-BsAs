@@ -165,6 +165,14 @@ server <- function(input, output) {
                      na.color = "#ffffff")
     
     output$mapa <- renderLeaflet({
+        
+        popup_txt <- function(lomb.sp) {
+            # Contenido de los popups y etiquetas de los marcadores.
+            paste("Especie: <b>", lomb.sp$species, "</b><br>",
+                  "Densidad: <b>", lomb.sp$dens, "</b><br>",
+                  "Año: <b>", lomb.sp$year, "</b>")
+        }
+        
         # Creación del mapa, usando la agregación anterior como fuente de datos.
         l <- leaflet(agg) %>%
             addTiles %>%
@@ -173,13 +181,8 @@ server <- function(input, output) {
                       title = "Densidad",
                       group = "Grilla") %>%
             addMarkers(data = lomb.sp,
-                       popup = paste("Especie: <b>", lomb.sp$species, "</b><br>",
-                                     "Densidad: <b>", lomb.sp$dens, "</b><br>",
-                                     "Año: <b>", lomb.sp$year, "</b>"),
-                       label = lapply(paste("Especie: <b>", lomb.sp$species, "</b><br>",
-                                            "Densidad: <b>", lomb.sp$dens, "</b><br>",
-                                            "Año: <b>", lomb.sp$year, "</b>"),
-                                      htmltools::HTML),
+                       popup = popup_txt(lomb.sp),
+                       label = lapply(popup_txt(lomb.sp), htmltools::HTML),
                        popupOptions = popupOptions(closeButton = FALSE),
                        group = "Marcadores") %>% 
             addLayersControl(overlayGroups = c("Grilla", "Marcadores"),
