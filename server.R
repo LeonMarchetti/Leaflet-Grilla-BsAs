@@ -51,8 +51,6 @@ dimensiones_celdas <- function(d, m) {
 server <- function(input, output) {
     # Datos
     # lomb.data <- read.csv("./lombriz-data.csv")
-    
-    # TODO: Cuando importo los datos aleatorios no se dibuja nada en el mapa
     lomb.data <- read.csv("./lombriz-data-rand.csv")
     
     # Convierto los datos importados en puntos espaciales.
@@ -170,15 +168,6 @@ server <- function(input, output) {
         # Creación del mapa, usando la agregación anterior como fuente de datos.
         l <- leaflet(agg) %>%
             addTiles %>%
-            addPolygons(stroke = TRUE,
-                        opacity = 1,
-                        fillOpacity = 0.5, 
-                        smoothFactor = 0.5,
-                        color = "black",
-                        fillColor = ~qpal(dens),
-                        label = ~as.character(dens),
-                        weight = 0.5,
-                        group = "Grilla") %>%
             addLegend(values = ~dens, 
                       pal = qpal, 
                       title = "Densidad",
@@ -198,5 +187,21 @@ server <- function(input, output) {
                              position = "topleft")
         # * addLayersControl agrega un control de capas, para poder alternar la
         #   vista de los marcadores y de la vista de la grilla.
+    })
+    
+    # Observo los cambios en el deslizador del grosor de la grilla, para redibujar
+    # la capa de la grilla con el grosor deseado.
+    observeEvent(input$grosor, {
+        leafletProxy("mapa", data = agg) %>%
+            clearGroup("Grilla") %>%
+            addPolygons(stroke = TRUE,
+                        opacity = 1,
+                        fillOpacity = 0.5,
+                        smoothFactor = 0.5,
+                        color = "black",
+                        fillColor = ~qpal(dens),
+                        label = ~as.character(dens),
+                        weight = input$grosor,
+                        group = "Grilla")
     })
 }
