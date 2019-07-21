@@ -176,18 +176,25 @@ server <- function(input, output) {
         # Creación del mapa, usando la agregación anterior como fuente de datos.
         l <- leaflet(agg) %>%
             addTiles %>%
-            addLegend(values = ~dens, 
-                      pal = qpal, 
+            addPolygons(group = "Mapa calor",
+                        stroke = FALSE,
+                        opacity = 1,
+                        fillColor = ~qpal(dens),
+                        fillOpacity = 0.5,
+                        label = ~as.character(dens),
+                        options = pathOptions(pane = "tilePane")) %>%
+            addLegend(pal = qpal, 
+                      values = ~dens, 
                       title = "Densidad",
-                      group = "Grilla") %>%
-            addMarkers(data = lomb.sp,
+                      group = "Mapa calor") %>%
+            addMarkers(group = "Marcadores",
                        popup = popup_txt(lomb.sp),
-                       label = lapply(popup_txt(lomb.sp), htmltools::HTML),
                        popupOptions = popupOptions(closeButton = FALSE),
-                       group = "Marcadores") %>% 
-            addLayersControl(overlayGroups = c("Grilla", "Marcadores"),
-                             options = layersControlOptions(collapsed = FALSE),
-                             position = "topleft")
+                       label = lapply(popup_txt(lomb.sp), htmltools::HTML),
+                       data = lomb.sp) %>% 
+            addLayersControl(overlayGroups = c("Grilla", "Mapa calor", "Marcadores"),
+                             position = "topleft",
+                             options = layersControlOptions(collapsed = FALSE))
         # * addLayersControl agrega un control de capas, para poder alternar la
         #   vista de los marcadores y de la vista de la grilla.
     })
@@ -197,14 +204,10 @@ server <- function(input, output) {
     observeEvent(input$grosor, {
         leafletProxy("mapa", data = agg) %>%
             clearGroup("Grilla") %>%
-            addPolygons(stroke = TRUE,
-                        opacity = 1,
-                        fillOpacity = 0.5,
-                        smoothFactor = 0.5,
+            addPolygons(group = "Grilla",
                         color = "black",
-                        fillColor = ~qpal(dens),
-                        label = ~as.character(dens),
                         weight = input$grosor,
-                        group = "Grilla")
+                        opacity = 1,
+                        fill = FALSE)
     })
 }
