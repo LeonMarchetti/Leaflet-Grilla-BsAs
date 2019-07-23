@@ -253,11 +253,9 @@ info_muestra <- function(muestra) {
           "Año: <b>", muestra$year, "</b>")
 }
 
-agregar_grilla <- function(l, agg, lomb.sp) {
+agregar_grilla <- function(l, agg, lomb.sp, grupo) {
     # Agrega al mapa leaflet la grilla con el mapa de calor. También agrega los
-    # marcadores sobre la posición de las muestras. Usa un control de capas
-    # para alternar la vista de la grilla, del mapa de calor y de los
-    # marcadores.
+    # marcadores sobre la posición de las muestras.
     #
     # Args:
     #   l: Un objeto Leaflet que representa el mapa sobre el cual dibujar la
@@ -266,6 +264,7 @@ agregar_grilla <- function(l, agg, lomb.sp) {
     #   las muestras agrupadas en cada celda.
     #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
     #   con valor de densidad y ubicación geográfica.
+    #   grupo: Nombre del grupo al que van a pertenecer las nuevas capas.
     #
     # Returns:
     #   El objeto Leaflet modificado.
@@ -273,7 +272,7 @@ agregar_grilla <- function(l, agg, lomb.sp) {
     qpal <- armar_paleta(agg)
 
     l <- l %>%
-        addPolygons(group = "Mapa calor",
+        addPolygons(group = grupo,
                     stroke = FALSE,
                     opacity = 1,
                     fillColor = ~qpal(dens),
@@ -283,17 +282,14 @@ agregar_grilla <- function(l, agg, lomb.sp) {
                     data = agg) %>%
         addLegend(pal = qpal,
                   values = ~dens,
-                  title = "Densidad",
-                  group = "Mapa calor",
+                  title = paste("Densidad:", grupo),
+                  group = grupo,
                   data = agg) %>%
-        addMarkers(group = "Marcadores",
+        addMarkers(group = grupo,
                    popup = info_muestra(lomb.sp),
                    popupOptions = popupOptions(closeButton = FALSE),
                    label = lapply(info_muestra(lomb.sp), htmltools::HTML),
-                   data = lomb.sp) %>%
-        addLayersControl(overlayGroups = c("Grilla", "Mapa calor", "Marcadores"),
-                         position = "topleft",
-                         options = layersControlOptions(collapsed = FALSE))
+                   data = lomb.sp)
 }
 
 server <- function(input, output) {
@@ -302,15 +298,51 @@ server <- function(input, output) {
     bsas <- importar_provincia("Buenos Aires")
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, bsas)
     map <- armar_grilla(bsas)
-    agg <- agrupar_muestras(lomb.sp, map)
+
+    # Separo los datos por año
+    lomb.sp.por.año <- split(lomb.sp, lomb.sp$year)
 
     output$mapa <- renderLeaflet({
+
+        # Construyo el mapa
         l <- leaflet() %>% addTiles
-        l <- agregar_grilla(l, agg, lomb.sp)
+
+        # Grupos base: Grupos de capas, tales que solo se puede activar un
+        # grupo a la vez.
+        base_groups <- c()
+
+        # Grupos superpuestos: Grupos de capas, tales que se pueden ir
+        # activando o desactivando sin restricciones.
+        overlay_groups <- c("Grilla")
+
+        # Itero sobre los años encontrados en la lista de muestras
+        for (año in names(lomb.sp.por.año)) {
+            # Defino el nombre del grupo del mapa de calor y los marcadores
+            # correspondientes al año.
+            grupo <- paste("Año:", año)
+
+            # Agrego el nombre del grupo a la lista de grupos base del mapa.
+            base_groups <- c(base_groups, grupo)
+
+            lomb.sp <- lomb.sp.por.año[[año]]
+            agg <- agrupar_muestras(lomb.sp, map)
+
+            # Agrego la grilla al mapa, pasando también la lista de muestras
+            # del año y el nombre del grupo.
+            l <- agregar_grilla(l, agg, lomb.sp, grupo)
+        }
+
+        # Control de visibilidad de capas, en donde permite ver solo una capa
+        # por año a la vez, y permite mostrar u oculta la grilla
+        l <- l %>% addLayersControl(baseGroups = base_groups,
+                                    overlayGroups = overlay_groups,
+                                    position = "topleft",
+                                    options = layersControlOptions(
+                                        collapsed = FALSE))
     })
 
-    # Observo los cambios en el deslizador del grosor de la grilla, para redibujar
-    # la capa de la grilla con el grosor deseado.
+    # Observo los cambios en el deslizador del grosor de la grilla, para
+    # redibujar la capa de la grilla con el grosor deseado.
     observeEvent(input$grosor, {
         leafletProxy("mapa") %>%
             clearGroup("Grilla") %>%
