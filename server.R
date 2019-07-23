@@ -329,7 +329,7 @@ server <- function(input, output) {
 
                 # Defino el nombre del grupo del mapa de calor y los marcadores
                 # correspondientes al año.
-                grupo <- paste("Año-", año, "Especie-", especie)
+                grupo <- paste(sep = "", especie, "-", año)
 
                 # Agrego el nombre del grupo a la lista de grupos base del mapa.
                 base_groups <- c(base_groups, grupo)
