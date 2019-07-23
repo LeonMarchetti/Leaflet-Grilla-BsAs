@@ -290,6 +290,7 @@ agregar_grilla <- function(l, agg, lomb.sp, grupo) {
                    popupOptions = popupOptions(closeButton = FALSE),
                    label = lapply(info_muestra(lomb.sp), htmltools::HTML),
                    data = lomb.sp)
+    # TODO: Arreglar problema de las leyendas, que no se ocultan junto con el mapa de calor al usar el control de capas.
 }
 
 server <- function(input, output) {
@@ -298,9 +299,6 @@ server <- function(input, output) {
     bsas <- importar_provincia("Buenos Aires")
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, bsas)
     map <- armar_grilla(bsas)
-
-    # Separo los datos por año
-    lomb.sp.por.año <- split(lomb.sp, lomb.sp$year)
 
     output$mapa <- renderLeaflet({
 
@@ -315,21 +313,34 @@ server <- function(input, output) {
         # activando o desactivando sin restricciones.
         overlay_groups <- c("Grilla")
 
-        # Itero sobre los años encontrados en la lista de muestras
+        # Separo los datos por año.
+        lomb.sp.por.año <- split(lomb.sp, lomb.sp$year)
+
+        # Itero sobre los años encontrados en la lista de muestras.
         for (año in names(lomb.sp.por.año)) {
-            # Defino el nombre del grupo del mapa de calor y los marcadores
-            # correspondientes al año.
-            grupo <- paste("Año:", año)
 
-            # Agrego el nombre del grupo a la lista de grupos base del mapa.
-            base_groups <- c(base_groups, grupo)
+            # Ahora separo los datos por especie:
+            lomb.sp.año <- lomb.sp.por.año[[año]]
+            lomb.sp.por.año.por.especie <- split(lomb.sp.año, lomb.sp.año$species)
 
-            lomb.sp <- lomb.sp.por.año[[año]]
-            agg <- agrupar_muestras(lomb.sp, map)
+            # Itero sobre las especies encontradas en la lista de muestras del
+            # año.
+            for (especie in names(lomb.sp.por.año.por.especie)) {
 
-            # Agrego la grilla al mapa, pasando también la lista de muestras
-            # del año y el nombre del grupo.
-            l <- agregar_grilla(l, agg, lomb.sp, grupo)
+                # Defino el nombre del grupo del mapa de calor y los marcadores
+                # correspondientes al año.
+                grupo <- paste("Año-", año, "Especie-", especie)
+
+                # Agrego el nombre del grupo a la lista de grupos base del mapa.
+                base_groups <- c(base_groups, grupo)
+
+                lomb.sp <- lomb.sp.por.año.por.especie[[especie]]
+                agg <- agrupar_muestras(lomb.sp, map)
+
+                # Agrego la grilla al mapa, pasando también la lista de muestras
+                # del año y el nombre del grupo.
+                l <- agregar_grilla(l, agg, lomb.sp, grupo)
+            }
         }
 
         # Control de visibilidad de capas, en donde permite ver solo una capa
