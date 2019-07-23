@@ -253,6 +253,49 @@ info_muestra <- function(muestra) {
           "Año: <b>", muestra$year, "</b>")
 }
 
+agregar_grilla <- function(l, agg, lomb.sp) {
+    # Agrega al mapa leaflet la grilla con el mapa de calor. También agrega los
+    # marcadores sobre la posición de las muestras. Usa un control de capas
+    # para alternar la vista de la grilla, del mapa de calor y de los
+    # marcadores.
+    #
+    # Args:
+    #   l: Un objeto Leaflet que representa el mapa sobre el cual dibujar la
+    #   grilla.
+    #   agg: Un objeto SpatialPolygonsDataFrame, que representa la grilla con
+    #   las muestras agrupadas en cada celda.
+    #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
+    #   con valor de densidad y ubicación geográfica.
+    #
+    # Returns:
+    #   El objeto Leaflet modificado.
+
+    qpal <- armar_paleta(agg)
+
+    l <- l %>%
+        addPolygons(group = "Mapa calor",
+                    stroke = FALSE,
+                    opacity = 1,
+                    fillColor = ~qpal(dens),
+                    fillOpacity = 0.5,
+                    label = ~as.character(dens),
+                    options = pathOptions(pane = "tilePane"),
+                    data = agg) %>%
+        addLegend(pal = qpal,
+                  values = ~dens,
+                  title = "Densidad",
+                  group = "Mapa calor",
+                  data = agg) %>%
+        addMarkers(group = "Marcadores",
+                   popup = info_muestra(lomb.sp),
+                   popupOptions = popupOptions(closeButton = FALSE),
+                   label = lapply(info_muestra(lomb.sp), htmltools::HTML),
+                   data = lomb.sp) %>%
+        addLayersControl(overlayGroups = c("Grilla", "Mapa calor", "Marcadores"),
+                         position = "topleft",
+                         options = layersControlOptions(collapsed = FALSE))
+}
+
 server <- function(input, output) {
 
     lomb.sp <- importar_datos()
@@ -260,44 +303,22 @@ server <- function(input, output) {
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, bsas)
     map <- armar_grilla(bsas)
     agg <- agrupar_muestras(lomb.sp, map)
-    qpal <- armar_paleta(agg)
 
     output$mapa <- renderLeaflet({
-        # Creación del mapa, usando la agregación anterior como fuente de datos.
-        l <- leaflet(agg) %>%
-            addTiles %>%
-            addPolygons(group = "Mapa calor",
-                        stroke = FALSE,
-                        opacity = 1,
-                        fillColor = ~qpal(dens),
-                        fillOpacity = 0.5,
-                        label = ~as.character(dens),
-                        options = pathOptions(pane = "tilePane")) %>%
-            addLegend(pal = qpal,
-                      values = ~dens,
-                      title = "Densidad",
-                      group = "Mapa calor") %>%
-            addMarkers(group = "Marcadores",
-                       popup = info_muestra(lomb.sp),
-                       popupOptions = popupOptions(closeButton = FALSE),
-                       label = lapply(info_muestra(lomb.sp), htmltools::HTML),
-                       data = lomb.sp) %>%
-            addLayersControl(overlayGroups = c("Grilla", "Mapa calor", "Marcadores"),
-                             position = "topleft",
-                             options = layersControlOptions(collapsed = FALSE))
-        # * addLayersControl agrega un control de capas, para poder alternar la
-        #   vista de los marcadores y de la vista de la grilla.
+        l <- leaflet() %>% addTiles
+        l <- agregar_grilla(l, agg, lomb.sp)
     })
 
     # Observo los cambios en el deslizador del grosor de la grilla, para redibujar
     # la capa de la grilla con el grosor deseado.
     observeEvent(input$grosor, {
-        leafletProxy("mapa", data = agg) %>%
+        leafletProxy("mapa") %>%
             clearGroup("Grilla") %>%
             addPolygons(group = "Grilla",
                         color = "black",
                         weight = input$grosor,
                         opacity = 1,
-                        fill = FALSE)
+                        fill = FALSE,
+                        data = map)
     })
 }
