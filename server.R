@@ -291,7 +291,7 @@ agregar_grilla <- function(l, agg, lomb.sp, titulo) {
                    popupOptions = popupOptions(closeButton = FALSE),
                    label = lapply(info_muestra(lomb.sp), htmltools::HTML),
                    data = lomb.sp)
-    # TODO: Arreglar leyenda, que no se borra cuando aplico otro mapa de calor.
+    # TODO: Arreglar leyenda, que cuando revelo el mapa de calor con el control de capas muestra las leyendas de otras selecciones anteriores.
 }
 
 server <- function(input, output, session) {
@@ -342,7 +342,8 @@ server <- function(input, output, session) {
         # anteriores:
         l <- leafletProxy("mapa") %>%
             clearGroup("Mapa calor") %>%
-            clearGroup("Marcadores")
+            clearGroup("Marcadores") %>%
+            clearControls
 
         # Agrego la grilla al mapa, pasando también la lista de muestras del
         # año y la especie y el título de la leyenda
