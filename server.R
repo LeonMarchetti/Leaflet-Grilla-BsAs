@@ -253,7 +253,7 @@ info_muestra <- function(muestra) {
           "Año: <b>", muestra$year, "</b>")
 }
 
-agregar_grilla <- function(l, agg, lomb.sp, grupo) {
+agregar_grilla <- function(l, agg, lomb.sp, titulo) {
     # Agrega al mapa leaflet la grilla con el mapa de calor. También agrega los
     # marcadores sobre la posición de las muestras.
     #
@@ -264,7 +264,8 @@ agregar_grilla <- function(l, agg, lomb.sp, grupo) {
     #   las muestras agrupadas en cada celda.
     #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
     #   con valor de densidad y ubicación geográfica.
-    #   grupo: Nombre del grupo al que van a pertenecer las nuevas capas.
+    #   titulo: Título de la leyenda, que identifica sobre cuales muestras
+    #   representa la paleta de colores.
     #
     # Returns:
     #   El objeto Leaflet modificado.
@@ -272,7 +273,7 @@ agregar_grilla <- function(l, agg, lomb.sp, grupo) {
     qpal <- armar_paleta(agg)
 
     l <- l %>%
-        addPolygons(group = grupo,
+        addPolygons(group = "Mapa calor",
                     stroke = FALSE,
                     opacity = 1,
                     fillColor = ~qpal(dens),
@@ -282,75 +283,73 @@ agregar_grilla <- function(l, agg, lomb.sp, grupo) {
                     data = agg) %>%
         addLegend(pal = qpal,
                   values = ~dens,
-                  title = paste("Densidad:", grupo),
-                  group = grupo,
+                  title = paste("Densidad:", titulo),
+                  group = "Mapa calor",
                   data = agg) %>%
-        addMarkers(group = grupo,
+        addMarkers(group = "Marcadores",
                    popup = info_muestra(lomb.sp),
                    popupOptions = popupOptions(closeButton = FALSE),
                    label = lapply(info_muestra(lomb.sp), htmltools::HTML),
                    data = lomb.sp)
-    # TODO: Arreglar problema de las leyendas, que no se ocultan junto con el mapa de calor al usar el control de capas.
+    # TODO: Arreglar leyenda, que cuando revelo el mapa de calor con el control de capas muestra las leyendas de otras selecciones anteriores.
 }
 
-server <- function(input, output) {
+server <- function(input, output, session) {
 
     lomb.sp <- importar_datos()
     bsas <- importar_provincia("Buenos Aires")
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, bsas)
+
+    # Defino los valores posibles para los select:
+    updateSelectInput(session, inputId = "especie",
+                      choices = sort(unique(lomb.sp$species)))
+
+    updateSelectInput(session, inputId = "año",
+                      choices = sort(unique(lomb.sp$year)))
+
     map <- armar_grilla(bsas)
 
     output$mapa <- renderLeaflet({
 
+        # Centro de la provincia, para usar en setView, ya que no funciona si
+        # no se indican las coordenadas.
+        centro <- gCentroid(bsas)@coords
+
         # Construyo el mapa
-        l <- leaflet() %>% addTiles
-
-        # Grupos base: Grupos de capas, tales que solo se puede activar un
-        # grupo a la vez.
-        base_groups <- c()
-
-        # Grupos superpuestos: Grupos de capas, tales que se pueden ir
-        # activando o desactivando sin restricciones.
-        overlay_groups <- c("Grilla")
-
-        # Separo los datos por año.
-        lomb.sp.por.año <- split(lomb.sp, lomb.sp$year)
-
-        # Itero sobre los años encontrados en la lista de muestras.
-        for (año in names(lomb.sp.por.año)) {
-
-            # Ahora separo los datos por especie:
-            lomb.sp.año <- lomb.sp.por.año[[año]]
-            lomb.sp.por.año.por.especie <- split(lomb.sp.año, lomb.sp.año$species)
-
-            # Itero sobre las especies encontradas en la lista de muestras del
-            # año.
-            for (especie in names(lomb.sp.por.año.por.especie)) {
-
-                # Defino el nombre del grupo del mapa de calor y los marcadores
-                # correspondientes al año.
-                grupo <- paste(sep = "", especie, "-", año)
-
-                # Agrego el nombre del grupo a la lista de grupos base del mapa.
-                base_groups <- c(base_groups, grupo)
-
-                lomb.sp <- lomb.sp.por.año.por.especie[[especie]]
-                agg <- agrupar_muestras(lomb.sp, map)
-
-                # Agrego la grilla al mapa, pasando también la lista de muestras
-                # del año y el nombre del grupo.
-                l <- agregar_grilla(l, agg, lomb.sp, grupo)
-            }
-        }
+        l <- leaflet() %>%
+            addTiles %>%
+            setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
 
         # Control de visibilidad de capas, en donde permite ver solo una capa
         # por año a la vez, y permite mostrar u oculta la grilla
-        l <- l %>% addLayersControl(baseGroups = base_groups,
-                                    overlayGroups = overlay_groups,
+        l <- l %>% addLayersControl(overlayGroups = c("Marcadores", "Mapa calor"),
                                     position = "topleft",
                                     options = layersControlOptions(
                                         collapsed = FALSE))
     })
+
+    # Observo los cambios para los controles del año y la especie, para dibujar
+    # el mapa de calor correspondiente:
+    observeEvent({input$año ; input$especie}, {
+
+        # Extraigo las muestras que coincidan con el año y la especie elegida:
+        lomb.sp.año <- lomb.sp[lomb.sp$year == input$año, ]
+        lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == input$especie, ]
+
+        agg <- agrupar_muestras(lomb.sp.año.especie, map)
+
+        # Re-dibujo el mapa, borrando el mapa de calor y los marcadores
+        # anteriores:
+        l <- leafletProxy("mapa") %>%
+            clearGroup("Mapa calor") %>%
+            clearGroup("Marcadores") %>%
+            clearControls
+
+        # Agrego la grilla al mapa, pasando también la lista de muestras del
+        # año y la especie y el título de la leyenda
+        l <- agregar_grilla(l, agg, lomb.sp.año.especie,
+                            paste(input$especie, "-", input$año, sep = ""))
+    }, ignoreInit = TRUE)
 
     # Observo los cambios en el deslizador del grosor de la grilla, para
     # redibujar la capa de la grilla con el grosor deseado.

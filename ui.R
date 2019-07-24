@@ -9,4 +9,14 @@ ui <- fluidPage(
                 value = 0.5,
                 width = "100%",
                 pre = "Grosor: "),
-    leafletOutput("mapa", height=550))
+    fluidRow(
+        column(6,
+            selectInput(inputId = "especie",
+                        label = "Especie",
+                        choices = c())),
+        column(6,
+            selectInput(inputId = "año",
+                        label = "Año",
+                        choices = c()))
+    ),
+    leafletOutput("mapa", height=450))
