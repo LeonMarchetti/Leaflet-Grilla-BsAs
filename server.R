@@ -309,10 +309,6 @@ server <- function(input, output) {
         # grupo a la vez.
         base_groups <- c()
 
-        # Grupos superpuestos: Grupos de capas, tales que se pueden ir
-        # activando o desactivando sin restricciones.
-        overlay_groups <- c("Grilla")
-
         # Separo los datos por año.
         lomb.sp.por.año <- split(lomb.sp, lomb.sp$year)
 
@@ -346,10 +342,14 @@ server <- function(input, output) {
         # Control de visibilidad de capas, en donde permite ver solo una capa
         # por año a la vez, y permite mostrar u oculta la grilla
         l <- l %>% addLayersControl(baseGroups = base_groups,
-                                    overlayGroups = overlay_groups,
                                     position = "topleft",
                                     options = layersControlOptions(
                                         collapsed = FALSE))
+    })
+
+    observeEvent({input$año ; input$especie}, {
+        cat("[16:45] ", input$especie, "-", input$año, "\n",
+            sep = "")
     })
 
     # Observo los cambios en el deslizador del grosor de la grilla, para
