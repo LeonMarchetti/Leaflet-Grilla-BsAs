@@ -236,7 +236,6 @@ armar_paleta <- function(agg) {
     #   Una función que toma un parámetro que calcula un color según ese valor.
 
     qpal <- colorBin("Reds", agg$dens,
-                     bins = 5,
                      na.color = "#ffffff")
     # * na.color significa el color asignado para las celdas con "NA".
 }
@@ -283,6 +282,7 @@ agregar_grilla <- function(l, agg, lomb.sp, titulo) {
                     data = agg) %>%
         addLegend(pal = qpal,
                   values = ~dens,
+                  na.label = "Sin muestras",
                   title = paste("Densidad:", titulo),
                   group = "Mapa calor",
                   data = agg) %>%
@@ -322,7 +322,7 @@ server <- function(input, output, session) {
 
         # Control de visibilidad de capas, en donde permite ver solo una capa
         # por año a la vez, y permite mostrar u oculta la grilla
-        l <- l %>% addLayersControl(overlayGroups = c("Marcadores", "Mapa calor"),
+        l <- l %>% addLayersControl(overlayGroups = c("Marcadores"),
                                     position = "topleft",
                                     options = layersControlOptions(
                                         collapsed = FALSE))
