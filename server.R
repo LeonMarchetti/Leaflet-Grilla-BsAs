@@ -333,7 +333,35 @@ server <- function(input, output, session) {
     # Observo el cambio del deslizador del tamaño de la celda, para
     # re-construir la grilla.
     observeEvent(input$tamaño, {
+
+        # Modifico la grilla, con el nuevo tamaño de celda, por lo que obtengo
+        # una grilla con distinto número de filas y columnas.
         map <<- armar_grilla(bsas, input$tamaño)
+
+        # Extraigo las muestras que coincidan con el año y la especie elegida:
+        lomb.sp.año <- lomb.sp[lomb.sp$year == input$año, ]
+        lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == input$especie, ]
+
+        agg <- agrupar_muestras(lomb.sp.año.especie, map)
+
+        # Redibujo la grilla y el mapa de calor usando el nuevo objeto de la
+        # grilla.
+        l <- leafletProxy("mapa") %>%
+            clearGroup("Grilla") %>%
+            clearGroup("Mapa calor") %>%
+            clearGroup("Marcadores") %>%
+            clearControls %>%
+            addPolygons(group = "Grilla",
+                        color = "black",
+                        weight = input$grosor,
+                        opacity = 1,
+                        fill = FALSE,
+                        data = map)
+
+        l <- agregar_grilla(l, agg, lomb.sp.año.especie,
+                            paste(input$especie, "-", input$año, sep = ""))
+
+
     }, ignoreInit = TRUE)
 
     # Observo los cambios para los controles del año y la especie, para dibujar
