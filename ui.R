@@ -16,7 +16,8 @@ ui <- fluidPage(
                               max = 100,
                               value = 25,
                               width = "100%",
-                              pre = "Tamaño: "))
+                              pre = "Tamaño: ",
+                              post = " km"))
     ),
     fluidRow(
         column(6,
