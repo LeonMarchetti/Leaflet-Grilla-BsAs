@@ -112,12 +112,13 @@ dimensiones_celdas <- function(d, m) {
     return(c(filas, columnas))
 }
 
-armar_grilla <- function(prov) {
+armar_grilla <- function(prov, tam) {
     # Armo la grilla, que se trata de un conjunto de polígonos cuadrados,
     # siguiendo el contorno de la provincia.
     #
     # Args:
     #   prov: Figura (SpatialPolygons) de la provincia donde armar la grilla.
+    #   tam: Tamaño en kilómetros de las celdas de la grilla
     #
     # Returns:
     #   Un objeto SpatialPolygons que representa la grilla sobre la provincia.
@@ -133,7 +134,7 @@ armar_grilla <- function(prov) {
     r <- raster(e)
 
     # Divido en grilla de filas x columnas
-    dim(r) <- dimensiones_celdas(25, bbox(prov))
+    dim(r) <- dimensiones_celdas(tam, bbox(prov))
     projection(r) <- crs(proj4string(prov))
 
     # Agrego el ID de etiqueta a las celdas
@@ -236,6 +237,7 @@ armar_paleta <- function(agg) {
     #   Una función que toma un parámetro que calcula un color según ese valor.
 
     qpal <- colorBin("Reds", agg$dens,
+                     bins = 5,
                      na.color = "#ffffff")
     # * na.color significa el color asignado para las celdas con "NA".
 }
@@ -307,7 +309,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, inputId = "año",
                       choices = sort(unique(lomb.sp$year)))
 
-    map <- armar_grilla(bsas)
+    map <- armar_grilla(bsas, 25)
 
     output$mapa <- renderLeaflet({
 
@@ -327,6 +329,12 @@ server <- function(input, output, session) {
                                     options = layersControlOptions(
                                         collapsed = FALSE))
     })
+
+    # Observo el cambio del deslizador del tamaño de la celda, para
+    # re-construir la grilla.
+    observeEvent(input$tamaño, {
+        map <<- armar_grilla(bsas, input$tamaño)
+    }, ignoreInit = TRUE)
 
     # Observo los cambios para los controles del año y la especie, para dibujar
     # el mapa de calor correspondiente:
