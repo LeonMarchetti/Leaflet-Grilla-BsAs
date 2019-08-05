@@ -20,9 +20,12 @@ ui <- fillPage(
             selectInput(inputId = "especie",
                         label = "Especie",
                         choices = c()),
-            selectInput(inputId = "año",
+            sliderInput(inputId = "año",
                         label = "Año",
-                        choices = c())
+                        value = c(1980, 2001),
+                        min = 1980,
+                        max = 2001,
+                        pre = "Año:")
         ),
         mainPanel(width = 9,
             leafletOutput("mapa")

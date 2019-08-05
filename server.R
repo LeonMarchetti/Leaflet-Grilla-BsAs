@@ -175,8 +175,8 @@ agrupar_muestras <- function(lomb.sp, map) {
     #   Un objeto SpatialPolygonsDataFrame que representa a las muestras
     #   agrupadas en cada celda de la grilla y con un valor de densidad
     #   promedio calculado para cada celda.
-
-    agg <- aggregate(x = lomb.sp["dens"],
+    #
+    agg <- aggregate(x = lomb.sp,
                      by = map,
                      FUN = mean)
 
@@ -273,18 +273,19 @@ redibujar_grilla <- function(map, grosor) {
                     data = map)
 }
 
-redibujar_mapa <- function(lomb.sp, map, año, especie) {
+redibujar_mapa <- function(lomb.sp, map, año_desde, año_hasta, especie) {
     # Re-dibuja la capa de la grilla.
     #
     # Args:
     #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
     #            con valor de densidad y ubicación geográfica.
     #   map: Un objeto SpatialPolygons que representa la grilla.
-    #   año: Año deseado para filtrar las muestras.
+    #   año_desde: Año mínimo para filtrar las muestras.
+    #   año_hasta: Año máximo para filtrar las muestras.
     #   especie: Especie deseada para filtrar las muestras.
 
     # Extraigo las muestras que coincidan con el año y la especie elegida:
-    lomb.sp.año <- lomb.sp[lomb.sp$year == año, ]
+    lomb.sp.año <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
     lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == especie, ]
 
     agg <- agrupar_muestras(lomb.sp.año.especie, map)
@@ -311,7 +312,7 @@ redibujar_mapa <- function(lomb.sp, map, año, especie) {
         addLegend(pal = qpal,
                   values = ~dens,
                   na.label = "Sin muestras",
-                  title = paste("Densidad:", paste(especie, "-", año, sep = "")),
+                  title = paste("Densidad:", paste(especie, " [", año_desde, "-", año_hasta, "]", sep = "")),
                   group = "Mapa calor",
                   data = agg) %>%
         addMarkers(group = "Marcadores",
@@ -329,12 +330,19 @@ server <- function(input, output, session) {
     bsas <- importar_provincia("Buenos Aires")
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, bsas)
 
-    # Defino los valores posibles para los select:
+    # Defino los valores posibles para el select de la especie:
     updateSelectInput(session, inputId = "especie",
                       choices = sort(unique(lomb.sp$species)))
 
-    updateSelectInput(session, inputId = "año",
-                      choices = sort(unique(lomb.sp$year)))
+    # Defino el rango para el deslizador del año, los años mínimo y máximo en
+    # la muestra pasan a ser los límites del deslizador:
+    min_año = min(lomb.sp$year)
+    max_año = max(lomb.sp$year)
+    updateSliderInput(session,
+                      inputId = "año",
+                      min = min_año,
+                      max = max_año,
+                      value = c(min_año, max_año))
 
     map <- armar_grilla(bsas, 25)
 
@@ -367,7 +375,7 @@ server <- function(input, output, session) {
 
         # Redibujo la grilla y el mapa de calor usando el nuevo objeto de la
         # grilla.
-        redibujar_mapa(lomb.sp, map, input$año, input$especie)
+        redibujar_mapa(lomb.sp, map, input$año[[1]], input$año[[2]], input$especie)
         redibujar_grilla(map, input$grosor)
 
     }, ignoreInit = TRUE)
@@ -376,7 +384,9 @@ server <- function(input, output, session) {
     # el mapa de calor correspondiente:
     observeEvent({input$año ; input$especie}, {
 
-        redibujar_mapa(lomb.sp, map, input$año, input$especie)
+        # input$año es un vector de dos elementos con los años desde y hasta
+        # del deslizador con rango.
+        redibujar_mapa(lomb.sp, map, input$año[[1]], input$año[[2]], input$especie)
 
     }, ignoreInit = TRUE)
 
