@@ -375,7 +375,7 @@ server <- function(input, output, session) {
 
         # Redibujo la grilla y el mapa de calor usando el nuevo objeto de la
         # grilla.
-        redibujar_mapa(lomb.sp, map, input$año, input$especie)
+        redibujar_mapa(lomb.sp, map, input$año[[1]], input$año[[2]], input$especie)
         redibujar_grilla(map, input$grosor)
 
     }, ignoreInit = TRUE)
