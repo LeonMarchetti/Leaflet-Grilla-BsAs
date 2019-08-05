@@ -175,7 +175,7 @@ agrupar_muestras <- function(lomb.sp, map) {
     #   Un objeto SpatialPolygonsDataFrame que representa a las muestras
     #   agrupadas en cada celda de la grilla y con un valor de densidad
     #   promedio calculado para cada celda.
-
+    #
     agg <- aggregate(x = lomb.sp["dens"],
                      by = map,
                      FUN = mean)
@@ -285,7 +285,7 @@ redibujar_mapa <- function(lomb.sp, map, año_desde, año_hasta, especie) {
     #   especie: Especie deseada para filtrar las muestras.
 
     # Extraigo las muestras que coincidan con el año y la especie elegida:
-    lomb.sp.año <- lomb.sp[lomb.sp$year > año_desde & lomb.sp$year < año_hasta, ]
+    lomb.sp.año <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
     lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == especie, ]
 
     agg <- agrupar_muestras(lomb.sp.año.especie, map)
@@ -312,7 +312,7 @@ redibujar_mapa <- function(lomb.sp, map, año_desde, año_hasta, especie) {
         addLegend(pal = qpal,
                   values = ~dens,
                   na.label = "Sin muestras",
-                  title = paste("Densidad:", paste(especie, "-[", año_desde, "-", año_hasta, "]", sep = "")),
+                  title = paste("Densidad:", paste(especie, " [", año_desde, "-", año_hasta, "]", sep = "")),
                   group = "Mapa calor",
                   data = agg) %>%
         addMarkers(group = "Marcadores",
