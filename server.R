@@ -112,12 +112,13 @@ dimensiones_celdas <- function(d, m) {
     return(c(filas, columnas))
 }
 
-armar_grilla <- function(prov) {
+armar_grilla <- function(prov, tam) {
     # Armo la grilla, que se trata de un conjunto de polígonos cuadrados,
     # siguiendo el contorno de la provincia.
     #
     # Args:
     #   prov: Figura (SpatialPolygons) de la provincia donde armar la grilla.
+    #   tam: Tamaño en kilómetros de las celdas de la grilla
     #
     # Returns:
     #   Un objeto SpatialPolygons que representa la grilla sobre la provincia.
@@ -133,7 +134,7 @@ armar_grilla <- function(prov) {
     r <- raster(e)
 
     # Divido en grilla de filas x columnas
-    dim(r) <- dimensiones_celdas(25, bbox(prov))
+    dim(r) <- dimensiones_celdas(tam, bbox(prov))
     projection(r) <- crs(proj4string(prov))
 
     # Agrego el ID de etiqueta a las celdas
@@ -162,11 +163,12 @@ interpol <- function(x) {
 
 agrupar_muestras <- function(lomb.sp, map) {
     # Agrupa cada muestra en la grilla de la provincia, y calcula el promedio
-    # en cada una de las celdas.
+    # en cada una de las celdas. Luego calcula un valor de interpolación para
+    # cada celda y lo suma a cada celda vecina.
     #
     # Args:
     #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
-    #   con valor de densidad y ubicación geográfica.
+    #            con valor de densidad y ubicación geográfica.
     #   map: Un objeto SpatialPolygons que representa la grilla.
     #
     # Returns:
@@ -230,12 +232,13 @@ armar_paleta <- function(agg) {
     #
     # Args:
     #   agg: Un objeto SpatialPolygonsDataFrame, que representa la grilla con
-    #   las muestras agrupadas en cada celda.
+    #        las muestras agrupadas en cada celda.
     #
     # Returns:
     #   Una función que toma un parámetro que calcula un color según ese valor.
 
     qpal <- colorBin("Reds", agg$dens,
+                     bins = 5,
                      na.color = "#ffffff")
     # * na.color significa el color asignado para las celdas con "NA".
 }
@@ -252,26 +255,51 @@ info_muestra <- function(muestra) {
           "Año: <b>", muestra$year, "</b>")
 }
 
-agregar_grilla <- function(l, agg, lomb.sp, titulo) {
-    # Agrega al mapa leaflet la grilla con el mapa de calor. También agrega los
-    # marcadores sobre la posición de las muestras.
+# Funciones para re-dibujar el mapa cuando cambio alguno de los parámetros:
+redibujar_grilla <- function(map, grosor) {
+    # Re-dibuja la capa de la grilla.
     #
     # Args:
-    #   l: Un objeto Leaflet que representa el mapa sobre el cual dibujar la
-    #   grilla.
-    #   agg: Un objeto SpatialPolygonsDataFrame, que representa la grilla con
-    #   las muestras agrupadas en cada celda.
-    #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
-    #   con valor de densidad y ubicación geográfica.
-    #   titulo: Título de la leyenda, que identifica sobre cuales muestras
-    #   representa la paleta de colores.
-    #
-    # Returns:
-    #   El objeto Leaflet modificado.
+    #   map: Un objeto SpatialPolygons que representa la grilla.
+    #   grosor: Grosor de las líneas de la grilla.
 
+    leafletProxy("mapa") %>%
+        clearGroup("Grilla") %>%
+        addPolygons(group = "Grilla",
+                    color = "black",
+                    weight = grosor,
+                    opacity = 1,
+                    fill = FALSE,
+                    data = map)
+}
+
+redibujar_mapa <- function(lomb.sp, map, año, especie) {
+    # Re-dibuja la capa de la grilla.
+    #
+    # Args:
+    #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
+    #            con valor de densidad y ubicación geográfica.
+    #   map: Un objeto SpatialPolygons que representa la grilla.
+    #   año: Año deseado para filtrar las muestras.
+    #   especie: Especie deseada para filtrar las muestras.
+
+    # Extraigo las muestras que coincidan con el año y la especie elegida:
+    lomb.sp.año <- lomb.sp[lomb.sp$year == año, ]
+    lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == especie, ]
+
+    agg <- agrupar_muestras(lomb.sp.año.especie, map)
+
+    # Paleta de colores según los datos:
     qpal <- armar_paleta(agg)
 
-    l <- l %>%
+    # Re-dibujo el mapa, borrando el mapa de calor y los marcadores
+    # anteriores:
+    # Agrego la grilla al mapa, pasando también la lista de muestras del año y
+    # la especie y el título de la leyenda.
+    l <- leafletProxy("mapa") %>%
+        clearGroup("Mapa calor") %>%
+        clearGroup("Marcadores") %>%
+        clearControls %>%
         addPolygons(group = "Mapa calor",
                     stroke = FALSE,
                     opacity = 1,
@@ -283,17 +311,18 @@ agregar_grilla <- function(l, agg, lomb.sp, titulo) {
         addLegend(pal = qpal,
                   values = ~dens,
                   na.label = "Sin muestras",
-                  title = paste("Densidad:", titulo),
+                  title = paste("Densidad:", paste(especie, "-", año, sep = "")),
                   group = "Mapa calor",
                   data = agg) %>%
         addMarkers(group = "Marcadores",
-                   popup = info_muestra(lomb.sp),
+                   popup = info_muestra(lomb.sp.año.especie),
                    popupOptions = popupOptions(closeButton = FALSE),
-                   label = lapply(info_muestra(lomb.sp), htmltools::HTML),
-                   data = lomb.sp)
-    # TODO: Arreglar leyenda, que cuando revelo el mapa de calor con el control de capas muestra las leyendas de otras selecciones anteriores.
+                   label = lapply(info_muestra(lomb.sp.año.especie), htmltools::HTML),
+                   data = lomb.sp.año.especie)
 }
 
+
+# Servidor
 server <- function(input, output, session) {
 
     lomb.sp <- importar_datos()
@@ -307,7 +336,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, inputId = "año",
                       choices = sort(unique(lomb.sp$year)))
 
-    map <- armar_grilla(bsas)
+    map <- armar_grilla(bsas, 25)
 
     output$mapa <- renderLeaflet({
 
@@ -328,39 +357,34 @@ server <- function(input, output, session) {
                                         collapsed = FALSE))
     })
 
+    # Observo el cambio del deslizador del tamaño de la celda, para
+    # re-construir la grilla.
+    observeEvent(input$tamaño, {
+
+        # Modifico la grilla, con el nuevo tamaño de celda, por lo que obtengo
+        # una grilla con distinto número de filas y columnas.
+        map <<- armar_grilla(bsas, input$tamaño)
+
+        # Redibujo la grilla y el mapa de calor usando el nuevo objeto de la
+        # grilla.
+        redibujar_mapa(lomb.sp, map, input$año, input$especie)
+        redibujar_grilla(map, input$grosor)
+
+    }, ignoreInit = TRUE)
+
     # Observo los cambios para los controles del año y la especie, para dibujar
     # el mapa de calor correspondiente:
     observeEvent({input$año ; input$especie}, {
 
-        # Extraigo las muestras que coincidan con el año y la especie elegida:
-        lomb.sp.año <- lomb.sp[lomb.sp$year == input$año, ]
-        lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == input$especie, ]
+        redibujar_mapa(lomb.sp, map, input$año, input$especie)
 
-        agg <- agrupar_muestras(lomb.sp.año.especie, map)
-
-        # Re-dibujo el mapa, borrando el mapa de calor y los marcadores
-        # anteriores:
-        l <- leafletProxy("mapa") %>%
-            clearGroup("Mapa calor") %>%
-            clearGroup("Marcadores") %>%
-            clearControls
-
-        # Agrego la grilla al mapa, pasando también la lista de muestras del
-        # año y la especie y el título de la leyenda
-        l <- agregar_grilla(l, agg, lomb.sp.año.especie,
-                            paste(input$especie, "-", input$año, sep = ""))
     }, ignoreInit = TRUE)
 
     # Observo los cambios en el deslizador del grosor de la grilla, para
     # redibujar la capa de la grilla con el grosor deseado.
     observeEvent(input$grosor, {
-        leafletProxy("mapa") %>%
-            clearGroup("Grilla") %>%
-            addPolygons(group = "Grilla",
-                        color = "black",
-                        weight = input$grosor,
-                        opacity = 1,
-                        fill = FALSE,
-                        data = map)
+
+        redibujar_grilla(map, input$grosor)
+
     })
 }
