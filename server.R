@@ -176,9 +176,7 @@ agrupar_muestras <- function(lomb.sp, map) {
     #   agrupadas en cada celda de la grilla y con un valor de densidad
     #   promedio calculado para cada celda.
     #
-    agg <- aggregate(x = lomb.sp,
-                     by = map,
-                     FUN = mean)
+    agg <- aggregate(lomb.sp, map, function(x) mean(as.numeric(x)))
 
     # Transformo los valores no existentes en 0.
     # agg$dens[is.na(agg$dens)] <- 0
