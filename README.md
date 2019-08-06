@@ -24,3 +24,6 @@ Como se trata de un proyecto que utiliza la librería **Shiny** de R, se sirve e
     * Se puede alternar la vista de los marcadores de las muestras.
 * Grilla:
     * Pasando el cursor sobre una celda con valor de densidad muestra un pequeño cartel con tal valor.
+
+## Notas
+* Este proyecto usa una serie de muestras generadas al azar, que abarcan lo más posible de la superficie de la provincia de Buenos Aires.
