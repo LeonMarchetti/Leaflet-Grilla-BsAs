@@ -3,6 +3,8 @@ Dibuja sobre la provincia de Buenos Aires una grilla, para después colorear cad
 
 * Origen figuras de Argentina, Provincias y Partidos: http://biogeo.ucdavis.edu/data/diva/adm/ARG_adm.zip
 
+![Captura](https://raw.githubusercontent.com/LeonMarchetti/Leaflet-Grilla-BsAs/master/screenshot.jpg)
+
 ## Instalación
 Solo hay que o clonar el repositorio.
 
