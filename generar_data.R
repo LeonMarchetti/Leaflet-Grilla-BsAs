@@ -19,16 +19,26 @@ rango_año <- 1988:2013
 
 # Rango de coordenadas:
 
-# Límite rectangular de la provincia
+# Límite rectangular de la provincia de Buenos Aires
 # bbox(bsas)
 #         min       max
 # x -63.39386 -56.66736
 # y -41.03542 -33.26014
 
-min_x <- -63.39386
-max_x <- -56.66736
-min_y <- -41.03542
-max_y <- -33.26014
+# min_x <- -63.39386
+# max_x <- -56.66736
+# min_y <- -41.03542
+# max_y <- -33.26014
+
+# Limite rectangular del conjunto de partidos
+# bbox(fig)
+#         min       max
+# x -59.82888 -58.78291
+# y -35.25217 -34.38187
+min_x <- -59.82888
+max_x <- -58.78291
+min_y <- -35.25217
+max_y <- -34.38187
 
 # Rango de densidades
 rango_dens <- 1:200
@@ -50,7 +60,7 @@ for (i in 1:cantidad) {
 View(df)
 
 # Escribir a archivo
-write.table(df, 
+write.table(df,
             file = "lombriz-data-rand.csv",
             quote = FALSE,
             sep = ",",

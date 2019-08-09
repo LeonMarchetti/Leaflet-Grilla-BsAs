@@ -43,15 +43,36 @@ importar_figura <- function() {
     # Returns:
     #   Un objeto SpatialPolygons que representa la figura importada.
 
-    # ARG_adm1.shp tiene las formas de las provincias.
-    argentina <- readOGR(dsn = "./ARG_adm/ARG_adm1.shp", verbose = FALSE)
+    # ARG_adm2.shp tiene las formas de los partidos.
+    argentina <- readOGR(dsn = "./ARG_adm/ARG_adm2.shp", verbose = FALSE)
 
-    # ARG_adm1.csv tiene los nombres de las provincias para la detección de la
+    # ARG_adm2.csv tiene los nombres de los partidos para la detección de la
     # forma.
     bsas <- subset(argentina, str_detect(NAME_1, "Buenos Aires"))
 
-    # Simplifico la figura de la provincia para reducir el tiempo de ejecución.
-    gSimplify(bsas, tol = 0.05)
+    # Lista de los partidos (de la provincia de Buenos Aires) que quiero unir:
+    partidos <- c(
+        "General Las Heras",
+        "General Rodríguez",
+        "Luján",
+        "Mercedes",
+        "Navarro"
+    )
+
+    # Busco en
+    for (nombre_partido in partidos) {
+        figura_partido <- subset(bsas, str_detect(NAME_2, nombre_partido))
+        if (is.null(f)) f <- figura_partido
+        else            f <- rbind(f, figura_partido)
+    }
+
+    # Disuelvo las lineas interiores de los partidos unidos.
+    f <- aggregate(f, dissolve=TRUE)
+
+    # Simplifico la figura para reducir el tiempo de ejecución.
+    # gSimplify(f, tol = 0.05)
+
+    return(f)
 }
 
 adaptar_datos_espaciales <- function(lomb.sp, fig) {
@@ -64,10 +85,10 @@ adaptar_datos_espaciales <- function(lomb.sp, fig) {
     # Returns:
     #   El data frame espacial modificado.
 
-    # Enfuerzo los límites de la provincia sobre los puntos
+    # Enfuerzo los límites de la figura sobre los puntos
     proj4string(lomb.sp) <- proj4string(fig)
 
-    # Borro las muestras que quedan afuera de la provincia
+    # Borro las muestras que quedan afuera de la figura
     lomb.sp <- lomb.sp[fig, ]
 
     return(lomb.sp)
@@ -97,7 +118,7 @@ actualizar_controles <- function(session, lomb.sp) {
 
 dimensiones_celdas <- function(d, m) {
     # Función que determina la cantidad de filas y columnas debe tener la
-    # grilla de la provincia en base al tamaño de esta y el que tendría la
+    # grilla de la figura en base al tamaño de esta y el que tendría la
     # celda.
     #
     # Args:
@@ -108,7 +129,7 @@ dimensiones_celdas <- function(d, m) {
     #   Un par (filas, columnas) con la cantidad de filas y columnas de la
     #   grilla.
 
-    # Resultado de bbox(prov):
+    # Resultado de bbox(fig):
     min_x <- m[[1]]
     min_y <- m[[2]]
     max_x <- m[[3]]
@@ -140,13 +161,13 @@ armar_grilla <- function(fig, tam) {
     #   tam: Tamaño en kilómetros de las celdas de la grilla
     #
     # Returns:
-    #   Un objeto SpatialPolygons que representa la grilla sobre la provincia.
+    #   Un objeto SpatialPolygons que representa la grilla sobre la figura
 
     # Determino el límite rectangular de la figura
     # bbox(fig)
     #         min       max
-    # x -63.39386 -56.66736
-    # y -41.03542 -33.26014
+    # x -59.82888 -58.78291
+    # y -35.25217 -34.38187
     e <- extent(bbox(fig))
 
     # Convierto a objeto raster
@@ -164,12 +185,11 @@ armar_grilla <- function(fig, tam) {
     # para cada polígono
     shape <- rasterToPolygons(r, dissolve = TRUE)
 
-    # Recorto las celdas de la grilla que contengan el polígono de la
-    # provincia.
+    # Recorto las celdas de la grilla que contengan el polígono de la figura
     p <- shape[fig, ]
 
     # Recorto el perímetro de la grilla para coincidir con el polígono de la
-    # provincia
+    # figura
     gIntersection(p, fig, byid = TRUE, drop_lower_td = TRUE)
 }
 
@@ -179,7 +199,7 @@ interpol <- function(x) {
 }
 
 agrupar_muestras <- function(lomb.sp, grilla) {
-    # Agrupa cada muestra en la grilla de la provincia, y calcula el promedio
+    # Agrupa cada muestra en la grilla de la figura, y calcula el promedio
     # en cada una de las celdas. Luego calcula un valor de interpolación para
     # cada celda y lo suma a cada celda vecina.
     #
@@ -322,7 +342,7 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
                     opacity = 1,
                     fillColor = ~qpal(dens),
                     fillOpacity = 0.5,
-                    label = ~as.character(dens),
+                    label = ~as.character(trunc(dens*10^2)/10^2),
                     options = pathOptions(pane = "tilePane"),
                     data = agg) %>%
         addLegend(pal = qpal,
@@ -353,24 +373,24 @@ server <- function(input, output, session) {
     # Queda puesto acá para inicializar la grilla antes de que se ejecuten los
     # observadores de los controles. Tiene que coincidir el tamaño con el
     # puesto en ui.R.
-    grilla <- armar_grilla(fig, 25)
+    grilla <- armar_grilla(fig, 10)
 
     output$mapa <- renderLeaflet({
 
-    # Centro de la provincia, para usar en setView, ya que no funciona si
-    # no se indican las coordenadas.
-    centro <- gCentroid(fig)@coords
+        # Centro de la figura, para usar en setView, ya que no funciona si no
+        # se indican las coordenadas.
+        centro <- gCentroid(fig)@coords
 
-    # Construyo el mapa
-    l <- leaflet() %>% addTiles %>%
-        setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
+        # Construyo el mapa
+        l <- leaflet() %>% addTiles %>%
+            setView(lat = centro[[2]], lng = centro[[1]], zoom = 9)
 
-    # Control de visibilidad de capas, en donde permite ver solo una capa
-    # por año a la vez, y permite mostrar u oculta la grilla
-    l <- l %>% addLayersControl(overlayGroups = c("Marcadores"),
-                                position = "topleft",
-                                options = layersControlOptions(
-                                    collapsed = FALSE))
+        # Control de visibilidad de capas, en donde permite ver solo una capa
+        # por año a la vez, y permite mostrar u oculta la grilla
+        l <- l %>% addLayersControl(overlayGroups = c("Marcadores"),
+                                    position = "topleft",
+                                    options = layersControlOptions(
+                                        collapsed = FALSE))
     })
 
     # Observo el cambio del deslizador del tamaño de la celda, para
