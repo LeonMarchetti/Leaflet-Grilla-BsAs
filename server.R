@@ -6,6 +6,7 @@ library(leaflet)
 library(raster)
 library(stringr)
 library(geosphere)
+library(htmltools)
 
 mostrar <- function(titulo, x) {
     # Muestra una variable por consola
@@ -36,44 +37,62 @@ importar_datos <- function() {
     return(lomb.sp)
 }
 
-importar_provincia <- function(nombre_prov) {
-    # Importo del archivo de la figura del país una provincia en particular.
-    #
-    # Args:
-    #   nombre_prov: El nombre de la provincia a importar.
+importar_figura <- function() {
+    # Importo de un archivo la figura sobre donde hacer la grilla.
     #
     # Returns:
-    #   Un objeto SpatialPolygons que representa La figura de la provincia.
+    #   Un objeto SpatialPolygons que representa la figura importada.
 
     # ARG_adm1.shp tiene las formas de las provincias.
-    argentina <- readOGR(dsn = "./ARG_adm/ARG_adm1.shp",
-                         verbose = FALSE)
+    argentina <- readOGR(dsn = "./ARG_adm/ARG_adm1.shp", verbose = FALSE)
 
     # ARG_adm1.csv tiene los nombres de las provincias para la detección de la
     # forma.
-    bsas <- subset(argentina, str_detect(NAME_1, nombre_prov))
+    bsas <- subset(argentina, str_detect(NAME_1, "Buenos Aires"))
 
     # Simplifico la figura de la provincia para reducir el tiempo de ejecución.
     gSimplify(bsas, tol = 0.05)
 }
 
-adaptar_datos_espaciales <- function(lomb.sp, prov) {
-    # Adapto el data frame espacial con los datos a la figura de la provincia.
+adaptar_datos_espaciales <- function(lomb.sp, fig) {
+    # Adapto el data frame espacial con los datos a una figura.
     #
     # Args:
     #   lomb.sp: El data frame espacial (SpatialPointsDataFrame).
-    #   prov: La figura (SpatialPolygons) de la provincia.
+    #   fig: La figura (SpatialPolygons).
     #
     # Returns:
     #   El data frame espacial modificado.
 
     # Enfuerzo los límites de la provincia sobre los puntos
-    proj4string(lomb.sp) <- proj4string(prov)
+    proj4string(lomb.sp) <- proj4string(fig)
 
     # Borro las muestras que quedan afuera de la provincia
-    lomb.sp <- lomb.sp[prov, ]
+    lomb.sp <- lomb.sp[fig, ]
 
     return(lomb.sp)
+}
+
+actualizar_controles <- function(session, lomb.sp) {
+    # Actualizo los controles, cambiando los valores límites o las elecciones
+    # posibles, usando los datos importados. Los controles son del framework de
+    # Shiny.
+    #
+    # Args:
+    #   session: Objeto sesión de Shiny
+    #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
+    #            con valor de densidad y ubicación geográfica.
+
+    # Defino los valores posibles para el select de la especie:
+    updateSelectInput(session, inputId = "especie",
+                      choices = sort(unique(lomb.sp$species)))
+
+    # Defino el rango para el deslizador del año, los años mínimo y máximo en
+    # la muestra pasan a ser los límites del deslizador:
+    min_año = min(lomb.sp$year)
+    max_año = max(lomb.sp$year)
+    updateSliderInput(session, inputId = "año", min = min_año, max = max_año,
+                      value = c(min_año, max_año))
 }
 
 dimensiones_celdas <- function(d, m) {
@@ -112,30 +131,30 @@ dimensiones_celdas <- function(d, m) {
     return(c(filas, columnas))
 }
 
-armar_grilla <- function(prov, tam) {
+armar_grilla <- function(fig, tam) {
     # Armo la grilla, que se trata de un conjunto de polígonos cuadrados,
-    # siguiendo el contorno de la provincia.
+    # siguiendo el contorno de la figura.
     #
     # Args:
-    #   prov: Figura (SpatialPolygons) de la provincia donde armar la grilla.
+    #   fig: Figura (SpatialPolygons) donde armar la grilla.
     #   tam: Tamaño en kilómetros de las celdas de la grilla
     #
     # Returns:
     #   Un objeto SpatialPolygons que representa la grilla sobre la provincia.
 
-    # Determino el límite rectangular de la provincia
-    # bbox(bsas)
+    # Determino el límite rectangular de la figura
+    # bbox(fig)
     #         min       max
     # x -63.39386 -56.66736
     # y -41.03542 -33.26014
-    e <- extent(bbox(prov))
+    e <- extent(bbox(fig))
 
     # Convierto a objeto raster
     r <- raster(e)
 
     # Divido en grilla de filas x columnas
-    dim(r) <- dimensiones_celdas(tam, bbox(prov))
-    projection(r) <- crs(proj4string(prov))
+    dim(r) <- dimensiones_celdas(tam, bbox(fig))
+    projection(r) <- crs(proj4string(fig))
 
     # Agrego el ID de etiqueta a las celdas
     # * Sacando esta linea se saca la grilla
@@ -147,13 +166,11 @@ armar_grilla <- function(prov, tam) {
 
     # Recorto las celdas de la grilla que contengan el polígono de la
     # provincia.
-    p <- shape[prov, ]
+    p <- shape[fig, ]
 
     # Recorto el perímetro de la grilla para coincidir con el polígono de la
     # provincia
-    gIntersection(p, prov,
-                  byid = TRUE,
-                  drop_lower_td = TRUE)
+    gIntersection(p, fig, byid = TRUE, drop_lower_td = TRUE)
 }
 
 interpol <- function(x) {
@@ -161,7 +178,7 @@ interpol <- function(x) {
     x / 2
 }
 
-agrupar_muestras <- function(lomb.sp, map) {
+agrupar_muestras <- function(lomb.sp, grilla) {
     # Agrupa cada muestra en la grilla de la provincia, y calcula el promedio
     # en cada una de las celdas. Luego calcula un valor de interpolación para
     # cada celda y lo suma a cada celda vecina.
@@ -169,14 +186,14 @@ agrupar_muestras <- function(lomb.sp, map) {
     # Args:
     #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
     #            con valor de densidad y ubicación geográfica.
-    #   map: Un objeto SpatialPolygons que representa la grilla.
+    #   grilla: Un objeto SpatialPolygons que representa la grilla.
     #
     # Returns:
     #   Un objeto SpatialPolygonsDataFrame que representa a las muestras
     #   agrupadas en cada celda de la grilla y con un valor de densidad
     #   promedio calculado para cada celda.
     #
-    agg <- aggregate(lomb.sp, map, function(x) mean(as.numeric(x)))
+    agg <- aggregate(lomb.sp, grilla, function(x) mean(as.numeric(x)))
 
     # Transformo los valores no existentes en 0.
     # agg$dens[is.na(agg$dens)] <- 0
@@ -195,7 +212,7 @@ agrupar_muestras <- function(lomb.sp, map) {
     list_interpol <- rep(0, length(agg))
 
     # Lista de vecinos de todos los polígonos
-    list.vec <- gTouches(map, byid = TRUE, returnDense = FALSE)
+    list.vec <- gTouches(grilla, byid = TRUE, returnDense = FALSE)
 
     for (i in 1:length(agg)) {
 
@@ -225,7 +242,7 @@ agrupar_muestras <- function(lomb.sp, map) {
 }
 
 armar_paleta <- function(agg) {
-    # Creo la paleta de colores, según los valores de la densidad de los
+    # Creo la paleta de colores, según los valores de la densidad de las
     # celdas de la grilla.
     #
     # Args:
@@ -254,11 +271,11 @@ info_muestra <- function(muestra) {
 }
 
 # Funciones para re-dibujar el mapa cuando cambio alguno de los parámetros:
-redibujar_grilla <- function(map, grosor) {
+redibujar_grilla <- function(grilla, grosor) {
     # Re-dibuja la capa de la grilla.
     #
     # Args:
-    #   map: Un objeto SpatialPolygons que representa la grilla.
+    #   grilla: Un objeto SpatialPolygons que representa la grilla.
     #   grosor: Grosor de las líneas de la grilla.
 
     leafletProxy("mapa") %>%
@@ -268,25 +285,26 @@ redibujar_grilla <- function(map, grosor) {
                     weight = grosor,
                     opacity = 1,
                     fill = FALSE,
-                    data = map)
+                    data = grilla)
 }
 
-redibujar_mapa <- function(lomb.sp, map, año_desde, año_hasta, especie) {
+redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
     # Re-dibuja la capa de la grilla.
     #
     # Args:
     #   lomb.sp: Un objeto SpatialPointsDataFrame que representa las muestras,
     #            con valor de densidad y ubicación geográfica.
-    #   map: Un objeto SpatialPolygons que representa la grilla.
+    #   grilla: Un objeto SpatialPolygons que representa la grilla.
     #   año_desde: Año mínimo para filtrar las muestras.
     #   año_hasta: Año máximo para filtrar las muestras.
     #   especie: Especie deseada para filtrar las muestras.
 
     # Extraigo las muestras que coincidan con el año y la especie elegida:
-    lomb.sp.año <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
+    lomb.sp.año <- lomb.sp[lomb.sp$year >= año_desde &
+                           lomb.sp$year <= año_hasta, ]
     lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == especie, ]
 
-    agg <- agrupar_muestras(lomb.sp.año.especie, map)
+    agg <- agrupar_muestras(lomb.sp.año.especie, grilla)
 
     # Paleta de colores según los datos:
     qpal <- armar_paleta(agg)
@@ -310,13 +328,15 @@ redibujar_mapa <- function(lomb.sp, map, año_desde, año_hasta, especie) {
         addLegend(pal = qpal,
                   values = ~dens,
                   na.label = "Sin muestras",
-                  title = paste("Densidad:", paste(especie, " [", año_desde, "-", año_hasta, "]", sep = "")),
+                  title = paste("Densidad:", paste(especie, " [", año_desde,
+                                                   "-", año_hasta, "]",
+                                                   sep = "")),
                   group = "Mapa calor",
                   data = agg) %>%
         addMarkers(group = "Marcadores",
                    popup = info_muestra(lomb.sp.año.especie),
                    popupOptions = popupOptions(closeButton = FALSE),
-                   label = lapply(info_muestra(lomb.sp.año.especie), htmltools::HTML),
+                   label = lapply(info_muestra(lomb.sp.año.especie), HTML),
                    data = lomb.sp.año.especie)
 }
 
@@ -325,56 +345,47 @@ redibujar_mapa <- function(lomb.sp, map, año_desde, año_hasta, especie) {
 server <- function(input, output, session) {
 
     lomb.sp <- importar_datos()
-    bsas <- importar_provincia("Buenos Aires")
-    lomb.sp <- adaptar_datos_espaciales(lomb.sp, bsas)
+    fig <- importar_figura()
+    lomb.sp <- adaptar_datos_espaciales(lomb.sp, fig)
 
-    # Defino los valores posibles para el select de la especie:
-    updateSelectInput(session, inputId = "especie",
-                      choices = sort(unique(lomb.sp$species)))
+    actualizar_controles(session, lomb.sp)
 
-    # Defino el rango para el deslizador del año, los años mínimo y máximo en
-    # la muestra pasan a ser los límites del deslizador:
-    min_año = min(lomb.sp$year)
-    max_año = max(lomb.sp$year)
-    updateSliderInput(session,
-                      inputId = "año",
-                      min = min_año,
-                      max = max_año,
-                      value = c(min_año, max_año))
-
-    map <- armar_grilla(bsas, 25)
+    # Queda puesto acá para inicializar la grilla antes de que se ejecuten los
+    # observadores de los controles. Tiene que coincidir el tamaño con el
+    # puesto en ui.R.
+    grilla <- armar_grilla(fig, 25)
 
     output$mapa <- renderLeaflet({
 
-        # Centro de la provincia, para usar en setView, ya que no funciona si
-        # no se indican las coordenadas.
-        centro <- gCentroid(bsas)@coords
+    # Centro de la provincia, para usar en setView, ya que no funciona si
+    # no se indican las coordenadas.
+    centro <- gCentroid(fig)@coords
 
-        # Construyo el mapa
-        l <- leaflet() %>%
-            addTiles %>%
-            setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
+    # Construyo el mapa
+    l <- leaflet() %>% addTiles %>%
+        setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
 
-        # Control de visibilidad de capas, en donde permite ver solo una capa
-        # por año a la vez, y permite mostrar u oculta la grilla
-        l <- l %>% addLayersControl(overlayGroups = c("Marcadores"),
-                                    position = "topleft",
-                                    options = layersControlOptions(
-                                        collapsed = FALSE))
+    # Control de visibilidad de capas, en donde permite ver solo una capa
+    # por año a la vez, y permite mostrar u oculta la grilla
+    l <- l %>% addLayersControl(overlayGroups = c("Marcadores"),
+                                position = "topleft",
+                                options = layersControlOptions(
+                                    collapsed = FALSE))
     })
 
     # Observo el cambio del deslizador del tamaño de la celda, para
     # re-construir la grilla.
     observeEvent(input$tamaño, {
 
-        # Modifico la grilla, con el nuevo tamaño de celda, por lo que obtengo
+        # Modifico la grilla con el nuevo tamaño de celda, por lo que obtengo
         # una grilla con distinto número de filas y columnas.
-        map <<- armar_grilla(bsas, input$tamaño)
+        grilla <<- armar_grilla(fig, input$tamaño)
 
         # Redibujo la grilla y el mapa de calor usando el nuevo objeto de la
         # grilla.
-        redibujar_mapa(lomb.sp, map, input$año[[1]], input$año[[2]], input$especie)
-        redibujar_grilla(map, input$grosor)
+        redibujar_mapa(lomb.sp, grilla, input$año[[1]], input$año[[2]],
+                       input$especie)
+        redibujar_grilla(grilla, input$grosor)
 
     }, ignoreInit = TRUE)
 
@@ -384,7 +395,8 @@ server <- function(input, output, session) {
 
         # input$año es un vector de dos elementos con los años desde y hasta
         # del deslizador con rango.
-        redibujar_mapa(lomb.sp, map, input$año[[1]], input$año[[2]], input$especie)
+        redibujar_mapa(lomb.sp, grilla, input$año[[1]], input$año[[2]],
+                       input$especie)
 
     }, ignoreInit = TRUE)
 
@@ -392,7 +404,7 @@ server <- function(input, output, session) {
     # redibujar la capa de la grilla con el grosor deseado.
     observeEvent(input$grosor, {
 
-        redibujar_grilla(map, input$grosor)
+        redibujar_grilla(grilla, input$grosor)
 
     })
 }
