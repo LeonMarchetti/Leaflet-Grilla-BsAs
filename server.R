@@ -43,27 +43,24 @@ importar_figura <- function() {
     # Returns:
     #   Un objeto SpatialPolygons que representa la figura importada.
 
+    # Lista de los partidos (de la provincia de Buenos Aires) que quiero unir
+    # ARG_adm2.csv tiene los nombres de las provincia y de los partidos para la
+    # detección de la forma.
+    partidos <- read.csv("./partidos.csv")
+
     # ARG_adm2.shp tiene las formas de los partidos.
     argentina <- readOGR(dsn = "./ARG_adm/ARG_adm2.shp", verbose = FALSE)
 
-    # ARG_adm2.csv tiene los nombres de los partidos para la detección de la
-    # forma.
-    bsas <- subset(argentina, str_detect(NAME_1, "Buenos Aires"))
+    f <- NULL
+    for (fila in 1:nrow(partidos)) {
+        nombre_prov <- as.vector(partidos$provincia[fila])
+        nombre_part <- as.vector(partidos$partido[fila])
 
-    # Lista de los partidos (de la provincia de Buenos Aires) que quiero unir:
-    partidos <- c(
-        "General Las Heras",
-        "General Rodríguez",
-        "Luján",
-        "Mercedes",
-        "Navarro"
-    )
+        figura_prov <- subset(argentina, str_detect(NAME_1, nombre_prov))
+        figura_part <- subset(figura_prov, str_detect(NAME_2, nombre_part))
 
-    # Busco en
-    for (nombre_partido in partidos) {
-        figura_partido <- subset(bsas, str_detect(NAME_2, nombre_partido))
-        if (is.null(f)) f <- figura_partido
-        else            f <- rbind(f, figura_partido)
+        if (is.null(f)) f <- figura_part
+        else            f <- rbind(f, figura_part)
     }
 
     # Disuelvo las lineas interiores de los partidos unidos.
