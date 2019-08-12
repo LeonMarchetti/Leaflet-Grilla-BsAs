@@ -8,7 +8,7 @@ ui <- fillPage(
                         label = "Grosor de la linea de la grilla",
                         min = 0,
                         max = 1,
-                        value = 0.5,
+                        value = 0.03,
                         pre = "Grosor: "),
             sliderInput(inputId = "tamaño",
                         label = "Tamaño (km) de las celdas de la grilla",
