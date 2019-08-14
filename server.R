@@ -10,6 +10,7 @@ library(leaflet)
 library(raster)
 library(rgdal)
 library(rgeos)
+library(RMySQL)
 library(sp)
 library(stringr)
 
@@ -33,12 +34,23 @@ importar_datos <- function() {
     # Returns:
     #   Un objeto SpatialPointsDataFrame con las muestras importadas.
 
+    # CSV:
     # lomb.data <- read.csv("./lombriz-data.csv")
-    lomb.data <- read.csv("./lombriz-data-rand.csv")
+    # lomb.data <- read.csv("./lombriz-data-rand.csv")
+
+    # MySQL:
+    db <- dbConnect(MySQL(), user = "root", password = "supermaria", dbname = "Coviella")
+    rs <- dbSendQuery(db, "Call get_muestras()")
+    lomb.data <- dbFetch(rs, n = -1)
+    lomb.data$species <- as.factor(lomb.data$species)
+    dbClearResult(rs)
+    dbDisconnect(db)
 
     # Convierto los datos importados en puntos espaciales.
     lomb.sp <- lomb.data
     coordinates(lomb.sp) <- ~x+y
+
+    # browser()
 
     return(lomb.sp)
 }
