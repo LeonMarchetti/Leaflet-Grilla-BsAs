@@ -1,3 +1,8 @@
+# Importo la función de interpolación, que de acuerdo al valor de una celda de
+# la grilla calcula un valor para sumar sobre las celdas vecinas.
+source("interpol.R")
+
+
 library(dplyr)
 library(geosphere)
 library(htmltools)
@@ -7,6 +12,7 @@ library(rgdal)
 library(rgeos)
 library(sp)
 library(stringr)
+
 
 mostrar <- function(titulo, x) {
     # Muestra una variable por consola
@@ -171,11 +177,6 @@ armar_grilla <- function(fig, tam) {
     # Recorto el perímetro de la grilla para coincidir con el polígono de la
     # figura.
     gIntersection(p, fig, byid = TRUE, drop_lower_td = TRUE)
-}
-
-interpol <- function(x) {
-    # Función de interpolación:
-    x / 2
 }
 
 agrupar_muestras <- function(lomb.sp, grilla) {
