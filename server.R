@@ -34,17 +34,22 @@ importar_datos <- function() {
     # Returns:
     #   Un objeto SpatialPointsDataFrame con las muestras importadas.
 
-    # CSV:
-    # lomb.data <- read.csv("./lombriz-data.csv")
-    # lomb.data <- read.csv("./lombriz-data-rand.csv")
-
     # MySQL:
-    db <- dbConnect(MySQL(), user = "root", password = "supermaria", dbname = "Coviella")
-    rs <- dbSendQuery(db, "Call get_muestras()")
-    lomb.data <- dbFetch(rs, n = -1)
-    lomb.data$species <- as.factor(lomb.data$species)
-    dbClearResult(rs)
-    dbDisconnect(db)
+    creds <- read.csv("./credenciales.csv", stringsAsFactors = FALSE)
+    if (dbCanConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)) {
+        db <- dbConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)
+        rs <- dbSendQuery(db, "Call get_muestras()")
+        lomb.data <- dbFetch(rs)
+        # Convierto los nombres de especies a Factor
+        lomb.data$species <- as.factor(lomb.data$species)
+        dbClearResult(rs)
+        dbDisconnect(db)
+
+    } else {
+        # Si no hay conexión con la bd entonces cargo un dataset de prueba en
+        # un archivo CSV
+        lomb.data <- read.csv("./lombriz-data-rand.csv")
+    }
 
     # Convierto los datos importados en puntos espaciales.
     lomb.sp <- lomb.data
