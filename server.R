@@ -365,6 +365,7 @@ server <- function(input, output, session) {
     fig <- importar_figura()
     centro <- gCentroid(fig)@coords # Centro de la figura, para usar en setView
 
+
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, fig)
 
     actualizar_controles(session, lomb.sp)
@@ -373,20 +374,29 @@ server <- function(input, output, session) {
 
     output$mapa <- renderLeaflet({
 
+        # Límites de la figura, para restringir el desplazamiento en el mapa.
+        limites <- bbox(fig)
+
         # Construyo el mapa
-        l <- leaflet() %>% addTiles %>%
-            setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
+        l <- leaflet(options = leafletOptions(minZoom = 6)) %>%
+            addTiles %>%
+            setView(lat = centro[[2]], lng = centro[[1]], zoom = 6) %>%
+            setMaxBounds(lng1 = limites[[1]],
+                         lat1 = limites[[2]],
+                         lng2 = limites[[3]],
+                         lat2 = limites[[4]])
 
         # Código Javascript para centrar el mapa usando un botón:
         # js_centrar <- "function(btn, map) { map.setLatLng(map.setView([0, 0])); }"
         js_centrar <- paste("function(btn, map){map.setLatLng(map.setView([", centro[[2]], ",", centro[[1]], "]));}")
 
-        # Control de visibilidad de capas, en donde permite ver solo una capa
+        # * Control de visibilidad de capas, en donde permite ver solo una capa
         # por año a la vez, y permite mostrar u oculta la grilla
-        l <- l %>% addLayersControl(overlayGroups = c("Marcadores"),
+        # * Botón para centrar el mapa en el centro de la figura.
+        l <- l %>%
+            addLayersControl(overlayGroups = c("Marcadores"),
                                     position = "topleft",
-                                    options = layersControlOptions(
-                                        collapsed = FALSE)) %>%
+                                    options = layersControlOptions(collapsed = FALSE)) %>%
             addEasyButton(button = easyButton(icon = "fa-dot-circle-o",
                                               title = "Centrar",
                                               onClick = JS(js_centrar)))
