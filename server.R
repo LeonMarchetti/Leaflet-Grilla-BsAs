@@ -10,6 +10,7 @@ library(leaflet)
 library(raster)
 library(rgdal)
 library(rgeos)
+library(RMySQL)
 library(sp)
 library(stringr)
 
@@ -33,12 +34,28 @@ importar_datos <- function() {
     # Returns:
     #   Un objeto SpatialPointsDataFrame con las muestras importadas.
 
-    # lomb.data <- read.csv("./lombriz-data.csv")
-    lomb.data <- read.csv("./lombriz-data-rand.csv")
+    # MySQL:
+    creds <- read.csv("./credenciales.csv", stringsAsFactors = FALSE)
+    if (dbCanConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)) {
+        db <- dbConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)
+        rs <- dbSendQuery(db, "Call get_muestras()")
+        lomb.data <- dbFetch(rs)
+        # Convierto los nombres de especies a Factor
+        lomb.data$species <- as.factor(lomb.data$species)
+        dbClearResult(rs)
+        dbDisconnect(db)
+
+    } else {
+        # Si no hay conexión con la bd entonces cargo un dataset de prueba en
+        # un archivo CSV
+        lomb.data <- read.csv("./lombriz-data-rand.csv")
+    }
 
     # Convierto los datos importados en puntos espaciales.
     lomb.sp <- lomb.data
     coordinates(lomb.sp) <- ~x+y
+
+    # browser()
 
     return(lomb.sp)
 }
