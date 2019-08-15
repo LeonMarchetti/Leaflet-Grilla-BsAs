@@ -361,7 +361,10 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
 server <- function(input, output, session) {
 
     lomb.sp <- importar_datos()
+
     fig <- importar_figura()
+    centro <- gCentroid(fig)@coords # Centro de la figura, para usar en setView
+
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, fig)
 
     actualizar_controles(session, lomb.sp)
@@ -370,20 +373,23 @@ server <- function(input, output, session) {
 
     output$mapa <- renderLeaflet({
 
-        # Centro de la figura, para usar en setView, ya que no funciona si
-        # no se indican las coordenadas.
-        centro <- gCentroid(fig)@coords
-
         # Construyo el mapa
         l <- leaflet() %>% addTiles %>%
             setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
+
+        # Código Javascript para centrar el mapa usando un botón:
+        # js_centrar <- "function(btn, map) { map.setLatLng(map.setView([0, 0])); }"
+        js_centrar <- paste("function(btn, map){map.setLatLng(map.setView([", centro[[2]], ",", centro[[1]], "]));}")
 
         # Control de visibilidad de capas, en donde permite ver solo una capa
         # por año a la vez, y permite mostrar u oculta la grilla
         l <- l %>% addLayersControl(overlayGroups = c("Marcadores"),
                                     position = "topleft",
                                     options = layersControlOptions(
-                                        collapsed = FALSE))
+                                        collapsed = FALSE)) %>%
+            addEasyButton(button = easyButton(icon = "fa-dot-circle-o",
+                                              title = "Centrar",
+                                              onClick = JS(js_centrar)))
     })
 
     # Observo el cambio del deslizador del tamaño de la celda, para
@@ -416,6 +422,13 @@ server <- function(input, output, session) {
     observeEvent(input$grosor, {
 
         redibujar_grilla(grilla, input$grosor)
+
+    })
+
+    observeEvent(input$centrar, {
+
+        l <- leafletProxy("mapa") %>%
+            setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
 
     })
 }
