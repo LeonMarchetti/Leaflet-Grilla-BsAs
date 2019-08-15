@@ -365,7 +365,6 @@ server <- function(input, output, session) {
     fig <- importar_figura()
     centro <- gCentroid(fig)@coords # Centro de la figura, para usar en setView
 
-
     lomb.sp <- adaptar_datos_espaciales(lomb.sp, fig)
 
     actualizar_controles(session, lomb.sp)
@@ -387,7 +386,6 @@ server <- function(input, output, session) {
                          lat2 = limites[[4]])
 
         # Código Javascript para centrar el mapa usando un botón:
-        # js_centrar <- "function(btn, map) { map.setLatLng(map.setView([0, 0])); }"
         js_centrar <- paste("function(btn, map){map.setLatLng(map.setView([", centro[[2]], ",", centro[[1]], "]));}")
 
         # * Control de visibilidad de capas, en donde permite ver solo una capa
@@ -432,13 +430,6 @@ server <- function(input, output, session) {
     observeEvent(input$grosor, {
 
         redibujar_grilla(grilla, input$grosor)
-
-    })
-
-    observeEvent(input$centrar, {
-
-        l <- leafletProxy("mapa") %>%
-            setView(lat = centro[[2]], lng = centro[[1]], zoom = 6)
 
     })
 }
