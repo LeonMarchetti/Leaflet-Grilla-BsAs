@@ -3,7 +3,7 @@ library(shiny)
 
 ui <- fillPage(
     sidebarLayout(
-        sidebarPanel(width = 3,
+        sidebarPanel(width = 3, style = "position:fixed;width:inherit;",
             sliderInput(inputId = "grosor",
                         label = "Grosor de la linea de la grilla",
                         min = 0,

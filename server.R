@@ -55,8 +55,6 @@ importar_datos <- function() {
     lomb.sp <- lomb.data
     coordinates(lomb.sp) <- ~x+y
 
-    # browser()
-
     return(lomb.sp)
 }
 
