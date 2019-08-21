@@ -332,7 +332,8 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
     l <- leafletProxy("mapa") %>%
         clearGroup("Mapa calor") %>%
         clearGroup("Marcadores") %>%
-        clearControls %>%
+        removeControl("botonCentrar") %>%
+        removeControl("leyenda") %>%
         addPolygons(group = "Mapa calor",
                     stroke = FALSE,
                     opacity = 1,
@@ -345,7 +346,8 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
                   values = ~dens,
                   na.label = "Sin muestras",
                   title = paste("Densidad:", paste(especie, " [", año_desde, "-", año_hasta, "]", sep = "")),
-                  group = "Mapa calor",
+                  group = "Leyenda",
+                  layerId = "leyenda",
                   data = agg) %>%
         addMarkers(group = "Marcadores",
                    popup = info_muestra(lomb.sp.año.especie),
@@ -353,7 +355,8 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
                    label = lapply(info_muestra(lomb.sp.año.especie), HTML),
                    data = lomb.sp.año.especie) %>%
         addControl(actionButton("zoomer", "", icon = icon("dot-circle-o")),
-                   position = "topleft")
+                   position = "topleft",
+                   layerId = "botonCentrar")
 }
 
 
@@ -389,7 +392,7 @@ server <- function(input, output, session) {
         # por año a la vez, y permite mostrar u oculta la grilla
         # * Botón para centrar el mapa en el centro de la figura.
         l <- l %>%
-            addLayersControl(overlayGroups = c("Marcadores"),
+            addLayersControl(overlayGroups = c("Leyenda", "Marcadores"),
                                     position = "topleft",
                                     options = layersControlOptions(collapsed = FALSE))
     })
