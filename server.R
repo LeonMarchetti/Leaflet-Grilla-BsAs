@@ -351,7 +351,9 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
                    popup = info_muestra(lomb.sp.año.especie),
                    popupOptions = popupOptions(closeButton = FALSE),
                    label = lapply(info_muestra(lomb.sp.año.especie), HTML),
-                   data = lomb.sp.año.especie)
+                   data = lomb.sp.año.especie) %>%
+        addControl(actionButton("zoomer", "", icon = icon("dot-circle-o")),
+                   position = "topleft")
 }
 
 
@@ -383,19 +385,13 @@ server <- function(input, output, session) {
                          lng2 = limites[[3]],
                          lat2 = limites[[4]])
 
-        # Código Javascript para centrar el mapa usando un botón:
-        js_centrar <- paste("function(btn, map){map.setLatLng(map.setView([", centro[[2]], ",", centro[[1]], "]));}")
-
         # * Control de visibilidad de capas, en donde permite ver solo una capa
         # por año a la vez, y permite mostrar u oculta la grilla
         # * Botón para centrar el mapa en el centro de la figura.
         l <- l %>%
             addLayersControl(overlayGroups = c("Marcadores"),
                                     position = "topleft",
-                                    options = layersControlOptions(collapsed = FALSE)) %>%
-            addEasyButton(button = easyButton(icon = "fa-dot-circle-o",
-                                              title = "Centrar",
-                                              onClick = JS(js_centrar)))
+                                    options = layersControlOptions(collapsed = FALSE))
     })
 
     # Observo el cambio del deslizador del tamaño de la celda, para
@@ -429,5 +425,11 @@ server <- function(input, output, session) {
 
         redibujar_grilla(grilla, input$grosor)
 
+    })
+
+    # Observo el botón para centrar el mapa.
+    observeEvent(input$zoomer, {
+        l <- leafletProxy("mapa") %>%
+            setView(lat = centro[[2]], lng = centro[[1]], zoom = input$mapa_zoom)
     })
 }
