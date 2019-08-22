@@ -211,36 +211,26 @@ agrupar_muestras <- function(lomb.sp, grilla) {
     #
     agg <- aggregate(lomb.sp, grilla, function(x) mean(as.numeric(x)))
 
-    # Transformo los valores no existentes en 0.
-    # agg$dens[is.na(agg$dens)] <- 0
-
-    # Transformo la projección de las coordenadas de la agregación.
-    # (No es necesario?)
-    # agg <- spTransform(agg, CRS("+init=epsg:4326"))
-
-    # Muestro la lista de celdas y los promedios de densidad en cada una.
-    # mostrar("agg$dens", agg$dens)
+    # Lista de vecinos de todos los polígonos
+    list.vec <- gTouches(grilla, byid = TRUE, returnDense = FALSE)
 
     # Calculo los valores a sumar para cada celda. Como la agregación me
     # devuelve una lista para representar la grilla, entonces voy a calcular
     # la posición de la siguiente celda según su índice y la cantidad de filas
     # y columnas.
-    list_interpol <- rep(0, length(agg))
+    list_interpol <- sapply(1:length(agg), function(i) {
+        x <- 0
 
-    # Lista de vecinos de todos los polígonos
-    list.vec <- gTouches(grilla, byid = TRUE, returnDense = FALSE)
+        # Itero sobre todas las celdas vecinas de la celda "i":
+        for (vecino in list.vec[[i]]) {
 
-    for (i in 1:length(agg)) {
-
-        # Si no hay valor en la lista inicial, entonces no calculo nada:
-        if (!is.na(agg$dens[[i]])) {
-
-            # Itero sobre los vecinos del polígono "i"
-            for (v in list.vec[[i]]) {
-                list_interpol[[v]] <- list_interpol[[v]] + interpol(agg$dens[[i]])
+            # Sumo el valor interpolado de la densidad de la celda vecina:
+            if (!is.na(agg$dens[[vecino]])) {
+                x <- x + interpol(agg$dens[[vecino]])
             }
         }
-    }
+        x
+    })
 
     # Sumo los valores interpolados a la agregación:
     for (i in 1:length(agg)) {
@@ -249,10 +239,6 @@ agrupar_muestras <- function(lomb.sp, grilla) {
         }
         agg$dens[[i]] <- agg$dens[[i]] + list_interpol[[i]]
     }
-
-    # DEBUG: Muestro la lista de celdas y los promedios de densidad en cada una
-    # después de sumar los valores interpolados.
-    # mostrar("agg$dens", agg$dens)
 
     return(agg)
 }
