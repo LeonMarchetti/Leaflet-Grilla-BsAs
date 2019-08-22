@@ -6,9 +6,9 @@ Dibuja sobre la provincia de Buenos Aires una grilla, para después colorear cad
 ![Captura](https://raw.githubusercontent.com/LeonMarchetti/Leaflet-Grilla-BsAs/master/screenshot.jpg)
 
 ## Instalación
-Solo hay que o clonar el repositorio.
+Solo hay que clonar el repositorio.
 
-## Uso
+## Ejecución
 Abrir el archivo `App.R ` en RStudio y ejecutarlo con `Run App`.
 
 Como se trata de un proyecto que utiliza la librería **Shiny** de R, se sirve el proyecto en un puerto de la máquina, con lo que luego se puede mostrar en una página web al utilizar un `iframe` cuya fuente sea la dirección expuesta por Shiny.
