@@ -35,21 +35,23 @@ importar_datos <- function() {
     #   Un objeto SpatialPointsDataFrame con las muestras importadas.
 
     # MySQL:
-    creds <- read.csv("./credenciales.csv", stringsAsFactors = FALSE)
-    if (dbCanConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)) {
-        db <- dbConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)
-        rs <- dbSendQuery(db, "Call get_muestras()")
-        lomb.data <- dbFetch(rs)
-        # Convierto los nombres de especies a Factor
-        lomb.data$species <- as.factor(lomb.data$species)
-        dbClearResult(rs)
-        dbDisconnect(db)
-
-    } else {
-        # Si no hay conexión con la bd entonces cargo un dataset de prueba en
-        # un archivo CSV
-        lomb.data <- read.csv("./lombriz-data-rand.csv")
-    }
+    # creds <- read.csv("./credenciales.csv", stringsAsFactors = FALSE)
+    # if (dbCanConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)) {
+    #     db <- dbConnect(MySQL(), user = creds$user, password = creds$password, dbname = creds$dbname, host = creds$host, port = creds$port)
+    #     rs <- dbSendQuery(db, "Call get_muestras()")
+    #     lomb.data <- dbFetch(rs)
+    #     # Convierto los nombres de especies a Factor
+    #     lomb.data$species <- as.factor(lomb.data$species)
+    #     dbClearResult(rs)
+    #     dbDisconnect(db)
+    # 
+    # } else {
+    #     # Si no hay conexión con la bd entonces cargo un dataset de prueba en
+    #     # un archivo CSV
+    #     lomb.data <- read.csv("./lombriz-data-rand.csv")
+    # }
+    
+    lomb.data <- read.csv("./Coviella.csv")
 
     # Convierto los datos importados en puntos espaciales.
     lomb.sp <- lomb.data
@@ -103,18 +105,33 @@ actualizar_controles <- function(session, lomb.sp) {
     #            con valor de densidad y ubicación geográfica.
 
     # Defino los valores posibles para el select de la especie:
-    updateSelectInput(session, inputId = "especie",
-                      choices = sort(unique(lomb.sp$species)))
-
+    # updateSelectInput(session, inputId = "especie", choices = sort(unique(lomb.sp$species)))
+    # updateSelectInput(session, inputId = "especie", 
+    #                   choices = c("Todos", as.vector(sort(unique(lomb.sp$species)))))
+    updateSelectInput(session, inputId = "especie", 
+                      choices = c("Todos", "No juveniles", as.vector(sort(unique(lomb.sp$species)))))
+    
     # Defino el rango para el deslizador del año, los años mínimo y máximo en
     # la muestra pasan a ser los límites del deslizador:
     min_año = min(lomb.sp$year)
     max_año = max(lomb.sp$year)
+    
+    cat("min_año =", min_año, "\n")
+    cat("max_año =", max_año, "\n")
+    
     updateSliderInput(session,
                       inputId = "año",
                       min = min_año,
                       max = max_año,
                       value = c(min_año, max_año))
+    
+    # updateSelectInput(session, inputId = "impacto", choices = sort(unique(lomb.sp$impact)))
+    updateSelectInput(session, inputId = "impacto", 
+                      choices = c("Todos", as.vector(sort(unique(lomb.sp$impact)))))
+    
+    # updateSelectInput(session, inputId = "investigador", choices = sort(unique(lomb.sp$researcher)))
+    updateSelectInput(session, inputId = "investigador", 
+                      choices = c("Todos", as.vector(sort(unique(lomb.sp$researcher)))))
 }
 
 dimensiones_celdas <- function(distancia, matriz) {
@@ -268,7 +285,9 @@ info_muestra <- function(muestra) {
     #   muestra: Una muestra, con nombre de especie, densidad y año.
 
     # Contenido de los popups y etiquetas de los marcadores.
-    paste("Especie: <b>", muestra$species, "</b><br>",
+    paste("Investigador: <b>", muestra$researcher, "</b><br>",
+          "Especie: <b>", muestra$species, "</b><br>",
+          "Impacto: <b>", muestra$impact, "</b><br>",
           "Densidad: <b>", muestra$dens, "</b><br>",
           "Año: <b>", muestra$year, "</b>")
 }
@@ -291,7 +310,7 @@ redibujar_grilla <- function(grilla, grosor) {
                     data = grilla)
 }
 
-redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
+redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, impacto, investigador) {
     # Re-dibuja la capa de la grilla.
     #
     # Args:
@@ -302,11 +321,24 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
     #   año_hasta: Año máximo para filtrar las muestras.
     #   especie: Especie deseada para filtrar las muestras.
 
-    # Extraigo las muestras que coincidan con el año y la especie elegida:
-    lomb.sp.año <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
-    lomb.sp.año.especie <- lomb.sp.año[lomb.sp.año$species == especie, ]
-
-    agg <- agrupar_muestras(lomb.sp.año.especie, grilla)
+    # Extraigo las muestras que coincidan con el año, la especie, el impacto y 
+    # el investigador elegidos:
+    lomb.sp <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
+    
+    if (especie != "Todos") {
+        lomb.sp <- lomb.sp[lomb.sp$species == especie, ]
+    }
+    
+    if (impacto != "Todos") {
+        lomb.sp <- lomb.sp[lomb.sp$impact == impacto, ]
+    }
+    
+    if (investigador != "Todos") {
+        lomb.sp <- lomb.sp[lomb.sp$researcher == investigador, ]
+    }
+    
+    
+    agg <- agrupar_muestras(lomb.sp, grilla)
 
     # Paleta de colores según los datos:
     qpal <- armar_paleta(agg)
@@ -331,15 +363,15 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie) {
         addLegend(pal = qpal,
                   values = ~dens,
                   na.label = "Sin muestras",
-                  title = paste("Densidad:", paste(especie, " [", año_desde, "-", año_hasta, "]", sep = "")),
+                  title = paste("Investigador: ", investigador, "<br>Especie: ", especie, "<br>Impacto: ", impacto, "<br>Fecha: ", año_desde, "-", año_hasta, sep = ""),
                   group = "Leyenda",
                   layerId = "leyenda",
                   data = agg) %>%
         addMarkers(group = "Marcadores",
-                   popup = info_muestra(lomb.sp.año.especie),
+                   popup = info_muestra(lomb.sp),
                    popupOptions = popupOptions(closeButton = FALSE),
-                   label = lapply(info_muestra(lomb.sp.año.especie), HTML),
-                   data = lomb.sp.año.especie) %>%
+                   label = lapply(info_muestra(lomb.sp), HTML),
+                   data = lomb.sp) %>%
         addControl(actionButton("zoomer", "", icon = icon("dot-circle-o")),
                    position = "topleft",
                    layerId = "botonCentrar")
@@ -400,11 +432,16 @@ server <- function(input, output, session) {
 
     # Observo los cambios para los controles del año y la especie, para dibujar
     # el mapa de calor correspondiente:
-    observeEvent({input$año ; input$especie}, {
+    observeEvent({
+        input$año ; 
+        input$especie ;
+        input$impacto ;
+        input$investigador
+        }, {
 
         # input$año es un vector de dos elementos con los años desde y hasta
         # del deslizador con rango.
-        redibujar_mapa(lomb.sp, grilla, input$año[[1]], input$año[[2]], input$especie)
+        redibujar_mapa(lomb.sp, grilla, input$año[[1]], input$año[[2]], input$especie, input$impacto, input$investigador)
 
     }, ignoreInit = TRUE)
 
