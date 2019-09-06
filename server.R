@@ -44,13 +44,13 @@ importar_datos <- function() {
     #     lomb.data$species <- as.factor(lomb.data$species)
     #     dbClearResult(rs)
     #     dbDisconnect(db)
-    # 
+    #
     # } else {
     #     # Si no hay conexión con la bd entonces cargo un dataset de prueba en
     #     # un archivo CSV
     #     lomb.data <- read.csv("./lombriz-data-rand.csv")
     # }
-    
+
     lomb.data <- read.csv("./Coviella.csv")
 
     # Convierto los datos importados en puntos espaciales.
@@ -106,31 +106,31 @@ actualizar_controles <- function(session, lomb.sp) {
 
     # Defino los valores posibles para el select de la especie:
     # updateSelectInput(session, inputId = "especie", choices = sort(unique(lomb.sp$species)))
-    # updateSelectInput(session, inputId = "especie", 
+    # updateSelectInput(session, inputId = "especie",
     #                   choices = c("Todos", as.vector(sort(unique(lomb.sp$species)))))
-    updateSelectInput(session, inputId = "especie", 
+    updateSelectInput(session, inputId = "especie",
                       choices = c("Todos", "No juveniles", as.vector(sort(unique(lomb.sp$species)))))
-    
+
     # Defino el rango para el deslizador del año, los años mínimo y máximo en
     # la muestra pasan a ser los límites del deslizador:
     min_año = min(lomb.sp$year)
     max_año = max(lomb.sp$year)
-    
+
     cat("min_año =", min_año, "\n")
     cat("max_año =", max_año, "\n")
-    
+
     updateSliderInput(session,
                       inputId = "año",
                       min = min_año,
                       max = max_año,
                       value = c(min_año, max_año))
-    
+
     # updateSelectInput(session, inputId = "impacto", choices = sort(unique(lomb.sp$impact)))
-    updateSelectInput(session, inputId = "impacto", 
+    updateSelectInput(session, inputId = "impacto",
                       choices = c("Todos", as.vector(sort(unique(lomb.sp$impact)))))
-    
+
     # updateSelectInput(session, inputId = "investigador", choices = sort(unique(lomb.sp$researcher)))
-    updateSelectInput(session, inputId = "investigador", 
+    updateSelectInput(session, inputId = "investigador",
                       choices = c("Todos", as.vector(sort(unique(lomb.sp$researcher)))))
 }
 
@@ -246,7 +246,7 @@ agrupar_muestras <- function(lomb.sp, grilla) {
                 x <- x + interpol(agg$dens[[vecino]])
             }
         }
-        x
+        return(x)
     })
 
     # Sumo los valores interpolados a la agregación:
@@ -321,23 +321,23 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, imp
     #   año_hasta: Año máximo para filtrar las muestras.
     #   especie: Especie deseada para filtrar las muestras.
 
-    # Extraigo las muestras que coincidan con el año, la especie, el impacto y 
+    # Extraigo las muestras que coincidan con el año, la especie, el impacto y
     # el investigador elegidos:
     lomb.sp <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
-    
+
     if (especie != "Todos") {
         lomb.sp <- lomb.sp[lomb.sp$species == especie, ]
     }
-    
+
     if (impacto != "Todos") {
         lomb.sp <- lomb.sp[lomb.sp$impact == impacto, ]
     }
-    
+
     if (investigador != "Todos") {
         lomb.sp <- lomb.sp[lomb.sp$researcher == investigador, ]
     }
-    
-    
+
+
     agg <- agrupar_muestras(lomb.sp, grilla)
 
     # Paleta de colores según los datos:
@@ -433,7 +433,7 @@ server <- function(input, output, session) {
     # Observo los cambios para los controles del año y la especie, para dibujar
     # el mapa de calor correspondiente:
     observeEvent({
-        input$año ; 
+        input$año ;
         input$especie ;
         input$impacto ;
         input$investigador
