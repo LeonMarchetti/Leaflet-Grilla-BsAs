@@ -116,9 +116,6 @@ actualizar_controles <- function(session, lomb.sp) {
     min_año = min(lomb.sp$year)
     max_año = max(lomb.sp$year)
 
-    cat("min_año =", min_año, "\n")
-    cat("max_año =", max_año, "\n")
-
     updateSliderInput(session,
                       inputId = "año",
                       min = min_año,
