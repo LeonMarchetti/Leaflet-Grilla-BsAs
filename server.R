@@ -322,7 +322,13 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, imp
     # el investigador elegidos:
     lomb.sp <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
 
-    if (especie != "Todos") {
+    if (especie == "No juveniles") {
+        # Filtro para sacar las muestras que no provengan de lombrices 
+        # juveniles
+        lomb.sp <- lomb.sp[lomb.sp$species != "Juveniles", ]
+        
+    } else if (especie != "Todos") {
+        # Muestras de todas las especies
         lomb.sp <- lomb.sp[lomb.sp$species == especie, ]
     }
 
