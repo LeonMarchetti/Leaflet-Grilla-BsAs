@@ -3,7 +3,7 @@ library(shiny)
 
 ui <- fillPage(
     sidebarLayout(
-        sidebarPanel(width = 3, style = "position:fixed;width:inherit;overflow-y:scroll;",
+        sidebarPanel(width = 3, style = "position:fixed;width:inherit;overflow-y:scroll;height:100vh",
             sliderInput(inputId = "grosor",
                         label = "Grosor de la linea de la grilla",
                         min = 0,
@@ -34,7 +34,7 @@ ui <- fillPage(
                         choices = c())
         ),
         mainPanel(width = 9,
-            leafletOutput("mapa")
+            leafletOutput("mapa", height = "100vh")
         ),
         fluid = FALSE
     )
