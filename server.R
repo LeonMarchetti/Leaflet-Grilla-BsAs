@@ -1,6 +1,6 @@
-# Importo la función de interpolación, que de acuerdo al valor de una celda de
+# Importo la función de extrapolación, que de acuerdo al valor de una celda de
 # la grilla calcula un valor para sumar sobre las celdas vecinas.
-source("interpol.R")
+source("extrapol.R")
 
 
 library(dplyr)
@@ -210,7 +210,7 @@ armar_grilla <- function(fig, tam) {
 
 agrupar_muestras <- function(lomb.sp, grilla) {
     # Agrupa cada muestra en la grilla de la figura, y calcula el promedio en
-    # cada una de las celdas. Luego calcula un valor de interpolación para cada
+    # cada una de las celdas. Luego calcula un valor de extrapolación para cada
     # celda y lo suma a cada celda vecina.
     #
     # Args:
@@ -232,26 +232,26 @@ agrupar_muestras <- function(lomb.sp, grilla) {
     # devuelve una lista para representar la grilla, entonces voy a calcular
     # la posición de la siguiente celda según su índice y la cantidad de filas
     # y columnas.
-    list_interpol <- sapply(1:length(agg), function(i) {
+    list_extrapol <- sapply(1:length(agg), function(i) {
         x <- 0
 
         # Itero sobre todas las celdas vecinas de la celda "i":
         for (vecino in list.vec[[i]]) {
 
-            # Sumo el valor interpolado de la densidad de la celda vecina:
+            # Sumo el valor extrapolado de la densidad de la celda vecina:
             if (!is.na(agg$dens[[vecino]])) {
-                x <- x + interpol(agg$dens[[vecino]])
+                x <- x + extrapol(agg$dens[[vecino]])
             }
         }
         return(x)
     })
 
-    # Sumo los valores interpolados a la agregación:
+    # Sumo los valores extrapolados a la agregación:
     for (i in 1:length(agg)) {
-        if (list_interpol[[i]] != 0 & is.na(agg$dens[[i]]) ) {
+        if (list_extrapol[[i]] != 0 & is.na(agg$dens[[i]]) ) {
             agg$dens[[i]] <- 0
         }
-        agg$dens[[i]] <- agg$dens[[i]] + list_interpol[[i]]
+        agg$dens[[i]] <- agg$dens[[i]] + list_extrapol[[i]]
     }
 
     return(agg)
@@ -323,10 +323,10 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, imp
     lomb.sp <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
 
     if (especie == "No juveniles") {
-        # Filtro para sacar las muestras que no provengan de lombrices 
+        # Filtro para sacar las muestras que no provengan de lombrices
         # juveniles
         lomb.sp <- lomb.sp[lomb.sp$species != "Juveniles", ]
-        
+
     } else if (especie != "Todos") {
         # Muestras de todas las especies
         lomb.sp <- lomb.sp[lomb.sp$species == especie, ]
