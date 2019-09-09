@@ -430,7 +430,7 @@ server <- function(input, output, session) {
         # del deslizador con rango.
         redibujar_mapa(lomb.sp, grilla, input$año[[1]], input$año[[2]], input$especie, input$impacto, input$investigador)
 
-    }, ignoreInit = TRUE)
+    }, ignoreInit = TRUE, ignoreNULL = FALSE)
 
     # Observo los cambios en el deslizador del grosor de la grilla, para
     # redibujar la capa de la grilla con el grosor deseado.
@@ -449,27 +449,27 @@ server <- function(input, output, session) {
     # Especies: Seleccionar todas o ninguna
     observeEvent(input$especie_todos, {
         updateSelectInput(session, "especie", selected = lomb.sp$species)
-    })
+    }, ignoreInit = TRUE)
 
     observeEvent(input$especie_ninguno, {
         updateSelectInput(session, "especie", selected = character(0))
-    })
+    }, ignoreInit = TRUE)
 
     # Impacto: Seleccionar todos o ninguno
     observeEvent(input$impacto_todos, {
         updateSelectInput(session, "impacto", selected = lomb.sp$impact)
-    })
+    }, ignoreInit = TRUE)
 
     observeEvent(input$impacto_ninguno, {
         updateSelectInput(session, "impacto", selected = character(0))
-    })
+    }, ignoreInit = TRUE)
 
     # Investigador: Seleccionar todos o ninguno
     observeEvent(input$investigador_todos, {
         updateSelectInput(session, "investigador", selected = lomb.sp$researcher)
-    })
+    }, ignoreInit = TRUE)
 
     observeEvent(input$investigador_ninguno, {
         updateSelectInput(session, "investigador", selected = character(0))
-    })
+    }, ignoreInit = TRUE)
 }
