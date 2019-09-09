@@ -311,10 +311,13 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especies, im
     #   grilla: Un objeto SpatialPolygons que representa la grilla.
     #   año_desde: Año mínimo para filtrar las muestras.
     #   año_hasta: Año máximo para filtrar las muestras.
-    #   especie: Especie deseada para filtrar las muestras.
+    #   especies: Lista de especies deseadas para filtrar las muestras.
+    #   impactos: Lista de impactos deseados para filtrar las muestras.
+    #   investigadores: Lista de investigadores deseados para filtrar las
+    #                   muestras.
 
-    # Extraigo las muestras que coincidan con el año, la especie, el impacto y
-    # el investigador elegidos:
+    # Extraigo las muestras que coincidan con el año, las especies, los
+    # impactos y los investigadores elegidos:
     lomb.sp <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
     lomb.sp <- lomb.sp[lomb.sp$species %in% especies, ]
     lomb.sp <- lomb.sp[lomb.sp$impact %in% impactos, ]
