@@ -285,7 +285,7 @@ info_muestra <- function(muestra) {
     paste("Investigador: <b>", muestra$researcher, "</b><br>",
           "Especie: <b>", muestra$species, "</b><br>",
           "Impacto: <b>", muestra$impact, "</b><br>",
-          "Densidad: <b>", muestra$dens, "</b><br>",
+          "Densidad: <b>", trunc(muestra$dens*10^2)/10^2, "</b><br>",
           "Año: <b>", muestra$year, "</b>")
 }
 
