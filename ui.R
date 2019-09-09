@@ -17,21 +17,43 @@ ui <- fillPage(
                         value = 25,
                         pre = "Tamaño: ",
                         post = " km"),
-            selectInput(inputId = "especie",
+            # Especies
+            selectizeInput(inputId = "especie",
                         label = "Especie",
-                        choices = c()),
+                        choices = c(),
+                        multiple = TRUE,
+                        options = list(placeholder = "Ninguna")),
+            actionLink("especie_todos", "Todas"),
+            br(),
+            actionLink("especie_ninguno", "Ninguna"),
+
+            # Fecha
             sliderInput(inputId = "año",
                         label = "Año",
                         value = c(2000, 2020),
                         min = 2000,
                         max = 2020,
                         pre = "Año:"),
-            selectInput(inputId = "impacto",
+
+            # Impactos
+            selectizeInput(inputId = "impacto",
                         label = "Impacto",
-                        choices = c()),
-            selectInput(inputId = "investigador",
+                        choices = c(),
+                        multiple = TRUE,
+                        options = list(placeholder = "Ninguno")),
+            actionLink("impacto_todos", "Todos"),
+            br(),
+            actionLink("impacto_ninguno", "Ninguno"),
+
+            # Investigadores
+            selectizeInput(inputId = "investigador",
                         label = "Investigador",
-                        choices = c())
+                        choices = c(),
+                        multiple = TRUE,
+                        options = list(placeholder = "Ninguno")),
+            actionLink("investigador_todos", "Todos"),
+            br(),
+            actionLink("investigador_ninguno", "Ninguno")
         ),
         mainPanel(width = 9,
             leafletOutput("mapa", height = "100vh")

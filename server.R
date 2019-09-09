@@ -105,11 +105,8 @@ actualizar_controles <- function(session, lomb.sp) {
     #            con valor de densidad y ubicación geográfica.
 
     # Defino los valores posibles para el select de la especie:
-    # updateSelectInput(session, inputId = "especie", choices = sort(unique(lomb.sp$species)))
-    # updateSelectInput(session, inputId = "especie",
-    #                   choices = c("Todos", as.vector(sort(unique(lomb.sp$species)))))
     updateSelectInput(session, inputId = "especie",
-                      choices = c("Todos", "No juveniles", as.vector(sort(unique(lomb.sp$species)))))
+                      choices = as.vector(sort(unique(lomb.sp$species))))
 
     # Defino el rango para el deslizador del año, los años mínimo y máximo en
     # la muestra pasan a ser los límites del deslizador:
@@ -122,13 +119,11 @@ actualizar_controles <- function(session, lomb.sp) {
                       max = max_año,
                       value = c(min_año, max_año))
 
-    # updateSelectInput(session, inputId = "impacto", choices = sort(unique(lomb.sp$impact)))
     updateSelectInput(session, inputId = "impacto",
-                      choices = c("Todos", as.vector(sort(unique(lomb.sp$impact)))))
+                      choices = as.vector(sort(unique(lomb.sp$impact))))
 
-    # updateSelectInput(session, inputId = "investigador", choices = sort(unique(lomb.sp$researcher)))
     updateSelectInput(session, inputId = "investigador",
-                      choices = c("Todos", as.vector(sort(unique(lomb.sp$researcher)))))
+                      choices = as.vector(sort(unique(lomb.sp$researcher))))
 }
 
 dimensiones_celdas <- function(distancia, matriz) {
@@ -307,7 +302,7 @@ redibujar_grilla <- function(grilla, grosor) {
                     data = grilla)
 }
 
-redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, impacto, investigador) {
+redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especies, impactos, investigadores) {
     # Re-dibuja la capa de la grilla.
     #
     # Args:
@@ -321,30 +316,16 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, imp
     # Extraigo las muestras que coincidan con el año, la especie, el impacto y
     # el investigador elegidos:
     lomb.sp <- lomb.sp[lomb.sp$year >= año_desde & lomb.sp$year <= año_hasta, ]
-
-    if (especie == "No juveniles") {
-        # Filtro para sacar las muestras que no provengan de lombrices
-        # juveniles
-        lomb.sp <- lomb.sp[lomb.sp$species != "Juveniles", ]
-
-    } else if (especie != "Todos") {
-        # Muestras de todas las especies
-        lomb.sp <- lomb.sp[lomb.sp$species == especie, ]
-    }
-
-    if (impacto != "Todos") {
-        lomb.sp <- lomb.sp[lomb.sp$impact == impacto, ]
-    }
-
-    if (investigador != "Todos") {
-        lomb.sp <- lomb.sp[lomb.sp$researcher == investigador, ]
-    }
-
+    lomb.sp <- lomb.sp[lomb.sp$species %in% especies, ]
+    lomb.sp <- lomb.sp[lomb.sp$impact %in% impactos, ]
+    lomb.sp <- lomb.sp[lomb.sp$researcher %in% investigadores, ]
 
     agg <- agrupar_muestras(lomb.sp, grilla)
 
     # Paleta de colores según los datos:
     qpal <- armar_paleta(agg)
+
+    titulo_leyenda <- paste("Fecha: ", año_desde, "-", año_hasta, sep = "")
 
     # Re-dibujo el mapa, borrando el mapa de calor y los marcadores
     # anteriores:
@@ -366,7 +347,7 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, imp
         addLegend(pal = qpal,
                   values = ~dens,
                   na.label = "Sin muestras",
-                  title = paste("Investigador: ", investigador, "<br>Especie: ", especie, "<br>Impacto: ", impacto, "<br>Fecha: ", año_desde, "-", año_hasta, sep = ""),
+                  title = titulo_leyenda,
                   group = "Leyenda",
                   layerId = "leyenda",
                   data = agg) %>%
@@ -460,5 +441,32 @@ server <- function(input, output, session) {
     observeEvent(input$zoomer, {
         l <- leafletProxy("mapa") %>%
             setView(lat = centro[[2]], lng = centro[[1]], zoom = input$mapa_zoom)
+    })
+
+    # Especies: Seleccionar todas o ninguna
+    observeEvent(input$especie_todos, {
+        updateSelectInput(session, "especie", selected = lomb.sp$species)
+    })
+
+    observeEvent(input$especie_ninguno, {
+        updateSelectInput(session, "especie", selected = character(0))
+    })
+
+    # Impacto: Seleccionar todos o ninguno
+    observeEvent(input$impacto_todos, {
+        updateSelectInput(session, "impacto", selected = lomb.sp$impact)
+    })
+
+    observeEvent(input$impacto_ninguno, {
+        updateSelectInput(session, "impacto", selected = character(0))
+    })
+
+    # Investigador: Seleccionar todos o ninguno
+    observeEvent(input$investigador_todos, {
+        updateSelectInput(session, "investigador", selected = lomb.sp$researcher)
+    })
+
+    observeEvent(input$investigador_ninguno, {
+        updateSelectInput(session, "investigador", selected = character(0))
     })
 }
