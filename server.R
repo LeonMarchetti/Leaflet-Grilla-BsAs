@@ -317,6 +317,8 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, imp
     #   año_desde: Año mínimo para filtrar las muestras.
     #   año_hasta: Año máximo para filtrar las muestras.
     #   especie: Especie deseada para filtrar las muestras.
+    #   impacto: Nivel de impacto deseado para filtrar las muestras.
+    #   investigador: Nombre del investigador deseado para filtrar las muestras.
 
     # Extraigo las muestras que coincidan con el año, la especie, el impacto y
     # el investigador elegidos:
