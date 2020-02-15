@@ -1,5 +1,7 @@
 # Leaflet Grilla Buenos Aires
-Dibuja sobre la provincia de Buenos Aires una grilla, para después colorear cada celda según algún dato.
+Dibuja sobre la provincia de Buenos Aires una grilla, para después colorear cada celda según muestras de lombrices esparcidas por la provincia.
+
+Cada celda de la grilla se colorea según un valor calculado a partir de la densidad de las lombrices según las muestras en la celda de la grilla correspondiente. Luego se puede filtrar las muestras según su especie y fecha.
 
 * Origen figuras de Argentina, Provincias y Partidos: http://biogeo.ucdavis.edu/data/diva/adm/ARG_adm.zip
 
