@@ -223,7 +223,7 @@ agrupar_muestras <- function(lomb.sp, grilla) {
     #   agrupadas en cada celda de la grilla y con un valor de densidad
     #   promedio calculado para cada celda.
     #
-    agg <- aggregate(lomb.sp, grilla, function(x) mean(as.numeric(x)))
+    agg <- aggregate(lomb.sp, grilla, function(x) suppressWarnings(mean(as.numeric(x))))
 
     # Lista de vecinos de todos los polígonos
     list.vec <- gTouches(grilla, byid = TRUE, returnDense = FALSE)
