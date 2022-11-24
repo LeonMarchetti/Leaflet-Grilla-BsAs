@@ -10,7 +10,7 @@ library(leaflet)
 library(raster)
 library(rgdal)
 library(rgeos)
-library(RMySQL)
+# library(RMySQL)
 library(sp)
 library(stringr)
 
@@ -199,6 +199,7 @@ armar_grilla <- function(fig, tam) {
     # Reconvierto en un archivo de forma para crear un popup del ID de celda
     # para cada polígono
     shape <- rasterToPolygons(r, dissolve = TRUE)
+    crs(shape) <- crs(fig)
 
     # Recorto las celdas de la grilla que contengan el polígono de la figura.
     p <- shape[fig, ]
