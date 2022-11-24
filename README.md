@@ -8,7 +8,14 @@ Cada celda de la grilla se colorea según un valor calculado a partir de la dens
 ![Captura](https://raw.githubusercontent.com/LeonMarchetti/Leaflet-Grilla-BsAs/master/screenshot.jpg)
 
 ## Instalación
-Solo hay que clonar el repositorio.
+
+Clonar el repositorio.
+
+### Requrimientos
+
+Hay que instalar paquetes en el sistema operativo para proveer los requerimientos para los paquetes en R:
+
+- `libgdal-dev` para `rgdal`
 
 ## Ejecución
 Abrir el archivo `App.R ` en RStudio y ejecutarlo con `Run App`.
