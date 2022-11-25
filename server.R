@@ -378,7 +378,11 @@ redibujar_mapa <- function(lomb.sp, grilla, año_desde, año_hasta, especie, imp
                    popupOptions = popupOptions(closeButton = FALSE),
                    label = lapply(info_muestra(lomb.sp), HTML),
                    data = lomb.sp) %>%
-        addControl(actionButton("zoomer", "", icon = icon("dot-circle-o")),
+        addControl(actionButton("zoomer", "",
+                                style = "display: contents; padding: 0;",
+                                icon = icon("arrows-to-circle",
+                                            style = "display: contents; height: 0; margin: 0;"),
+                               ),
                    position = "topleft",
                    layerId = "botonCentrar")
 }
